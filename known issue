@@ -1,0 +1,67 @@
+Ver.3.3.1)
+
+Update:
+Planning results upload into database.
+
+Basic planning logic:
+1. Yesterday delayed order. (The delayed orders are checked offline for now)
+   (1) more than one delayed order are considered.
+2. Emergency order
+    (1) [Off] Add the urgent mode. In the urgent mode, order insertion is allowed.
+    (2) Check the order with the same mold first.
+    (3) Emergency part number are ordered in row order.
+    (4) A column (maximum mold number) shows the maximum times that this part can be ordered.
+3. Normal (By row order in weekly_demand)
+4. [Off] Buffer (Add the buffer mode)
+5. [NEW] Planning results upload into database.
+
+
+Fixed issue in this edit:
+1. The end time is not limited.
+
+Known issue:
+1. A part number with more than one plastic number.
+2. The new testing mold tend to be planned at the same part number.
+3. Different part number with same mold, but with different plastic number, change the plastic need another time.
+4. Mold data.
+5. Package type.
+6. The time for mold changing cannot be at the same time.
+
+Fixed issue:
+1. One mold two chambers (keep updating).
+2. Same part number is ordered two times.
+3. Real yesterday manufacture progress. (offline for now)
+4. Two different molds working at the same time is allowed (Maximum mold amount is recorded in Emergency data sheet for now)
+5. Fixed the machine color filter function(machine.get_machine_by_color()) return the unworked machine.
+6. Some of the first orders need the mold changing time.
+7. Oversea part number with different package type, but no need mold changing time. (Different part number but same mold)
+
+Exception: 1A02BEH10-04E
+
+System Modules:
+1. Machine
+    Parameters:
+        (1) self.name : machine name
+        (2) self.tons : machine tons
+        (3) self.color : machine color
+        (4) self.status : machine status(1 for working ; 0 for unworked)
+        (5) self.order_list : the daily planning order list in the machine(each list element is class Order)
+        (6) self.remaining_time : the remaining time of the machine (Maximum (one day) : 24 ; Minimum : 0)
+    Implementation:
+        (1) show_machine_information() : show the machine information, return None
+            Example:
+            """""""""""""""""""""""
+            machine name :  G08白色
+            tons :  100T
+            color :  white
+            status :  normal
+            order :  ['700-36486-01PWB', '1B21PA600-11E']
+            remaining time :  0.0
+            """""""""""""""""""""""
+
+        (2) get_order_name_list() : get all the planning order name in one machine, return list
+
+2. Line
+    Parameters
+3. Factory
+4. Real_machine_status(Machine)
