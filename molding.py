@@ -18,17 +18,14 @@ class Order():
     start_time = ''
     end_time = ''
     planning_time = ''
-    def __init__(self, part_number, part_name, amount, remaining_amount, UPH, start_time, end_time, real_start_time, real_end_time, planning_time, \
+    def __init__(self, part_number, part_name, amount, UPH, start_time, end_time, planning_time, \
                  urgent_tag=False):
         self.part_number = part_number
         self.part_name = part_name
         self.amount = amount
-        self.remaining_amount = remaining_amount
         self.UPH = UPH
         self.start_time = start_time
         self.end_time = end_time
-        self.real_start_time = real_start_time
-        self.real_end_time = real_end_time
         self.planning_time = planning_time
         self.urgent_tag = urgent_tag
 
@@ -226,6 +223,14 @@ class Factory():
     def __init__(self, name, line_list):
         self.name = name
         self.line_list = line_list
+    
+    def get_machine_by_name(self, name):
+        for l in self.line_list:
+            for m in l.machine_list:
+                if m.name == name:
+                    return m
+                else:
+                    continue
 
     def get_machine_by_tons(self, tons):
         result_list = []
@@ -300,7 +305,6 @@ class Factory():
                         tons = 130
 
                     data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'M2', 'M2', 'M2', 'M2', 'M2', o.part_name, o.amount, 1, 'M', 'M', 'M2', 0, 0, 'M2', 4, m.color, 'M2')
-                    print(data)
                     sql = '''INSERT INTO "arrangement_result" ("machine_NO", "machine_ton", "mold_down_t", "plan_s_time", "plan_e_time", "plan_work_time", "Part_NO", "machine_CT", "UPH", "mold_edit", "mold_Serial", "mold_NO", "mold_position", "package_size", "product_name", "plan_number", "emergency", "mass_pro", "need", "same_mold_part_NO", "value", "total_value", "plastic_Part_NO", "mold_changeover_time", "plastic_color", "note", "Seq") VALUES (:1, :2, TO_DATE(:3,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:4,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:5,'YYYY-MM-DD HH24:MI:SS'), :6, :7, :8, :9, :10, :11, :12, :13, :14, :15, :16, :17, :18, :19, :20, :21, :22, :23, :24, :25, :26, ARRANGEMENT_SEQ.NEXTVAL)'''
                     cursor.execute(sql, data)
                     conn.commit()

@@ -17,14 +17,14 @@ class NWE_Molding_Oracle(API_Oracle):
     if PN[0] == '7' or PN[0] == '8':
       return PN
     else:
-      data = self.queryFilterAll('BOM', F_ITEM_NO=PN)
+      data = self.queryFilterAll('BOM', {'F_ITEM_NO__eq':PN})
       if data == []:
         return None
       for d in data:
         return self.get_plasticNO(d[5])
 
   def update_weeklyAmount(self, amount, PN):
-    finished_amount = self.queryFilterOne('week_plan', Part_NO=PN)[4]
+    finished_amount = self.queryFilterOne('week_plan', {'Part_NO__eq':PN})[4]
     if finished_amount !=None:
       amount = finished_amount + amount
     self.updateOne('week_plan', real_NO=amount, Part_NO=PN)

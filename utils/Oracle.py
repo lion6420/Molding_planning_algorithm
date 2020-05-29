@@ -34,39 +34,81 @@ class API_Oracle():
     self.disconnection()
     return data
 
-  def queryFilterAll(self, table, **kwargs):
+  def queryFilterAll(self, table, filterArgs):
     self.make_connection()
-    sql = 'SELECT * FROM "' + table + '" WHERE "'
+    sql = 'SELECT * FROM "' + table + '" WHERE '
     count = 0
     input = {}
-    for k, v in kwargs.items():
+    for k, v in filterArgs.items():
+      key = k.split('__')[0]
+      operater = k.split('__')[1]
+      if operater == 'eq':
+        sql_toAppend = '"' + key + '"=:' + key
+        input.update({key:v})
+      elif operater == '!eq':
+        sql_toAppend = '"' + key + '"!=:' + key
+        input.update({key:v})
+      elif operater == 'gt':
+        sql_toAppend = '"' + key + '">:' + key
+        input.update({key:v})
+      elif operater == 'gte':
+        sql_toAppend = '"' + key + '">=:' + key
+        input.update({key:v})
+      elif operater == 'lt':
+        sql_toAppend = '"' + key + '"<:' + key
+        input.update({key:v})
+      elif operater == 'lte':
+        sql_toAppend = '"' + key + '"<=:' + key
+        input.update({key:v})
+      elif operater == 'bt':
+        sql_toAppend = '"' + key + '" BETWEEN :' + key + '_1 AND :' + key + '_2'
+        input.update({key + '_1':v[0]})
+        input.update({key + '_2':v[1]})
       if count == 0:
-        sql = sql + k + '"=:' + k
-        input.update({k:v})
-        count+=1
-      else: 
-        sql = sql + ' and "' + k + '"=:' + k
-        input.update({k:v})
-        count+=1
+        sql = sql + sql_toAppend
+      else:
+        sql = sql + ' and ' + sql_toAppend
+      count+=1
     self.cursor.execute(sql, input)
     data = self.cursor.fetchall()
     self.disconnection()
     return data
 
-  def queryFilterOne(self, table, **kwargs):
+  def queryFilterOne(self, table, filterArgs):
     self.make_connection()
-    sql = 'SELECT * FROM "' + table + '" WHERE "'
+    sql = 'SELECT * FROM "' + table + '" WHERE '
     count = 0
     input = {}
-    for k, v in kwargs.items():
+    for k, v in filterArgs.items():
+      key = k.split('__')[0]
+      operater = k.split('__')[1]
+      if operater == 'eq':
+        sql_toAppend = '"' + key + '"=:' + key
+        input.update({key:v})
+      elif operater == '!eq':
+        sql_toAppend = '"' + key + '"!=:' + key
+        input.update({key:v})
+      elif operater == 'gt':
+        sql_toAppend = '"' + key + '">:' + key
+        input.update({key:v})
+      elif operater == 'gte':
+        sql_toAppend = '"' + key + '">=:' + key
+        input.update({key:v})
+      elif operater == 'lt':
+        sql_toAppend = '"' + key + '"<:' + key
+        input.update({key:v})
+      elif operater == 'lte':
+        sql_toAppend = '"' + key + '"<=:' + key
+        input.update({key:v})
+      elif operater == 'bt':
+        sql_toAppend = '"' + key + '" BETWEEN :' + key + '_1 AND :' + key + '_2'
+        input.update({key + '_1':v[0]})
+        input.update({key + '_2':v[1]})
       if count == 0:
-        sql = sql + k + '"=:' + k
-        input.update({k:v})
-        count+=1
-      else: 
-        sql = sql + ' and "' + k + '"=:' + k
-        input.update({k:v})
-        count+=1
+        sql = sql + sql_toAppend
+      else:
+        sql = sql + ' and ' + sql_toAppend
+      count+=1
     self.cursor.execute(sql, input)
     data = self.cursor.fetchone()
     self.disconnection()
