@@ -283,7 +283,7 @@ class Factory():
         return
     
     def output_daily_planning(self):
-        from setting import dsn_tns
+        from config.config import dsn_tns
         conn = cx_Oracle.connect(
             user = 'NWEIAI',
             password = 'NWE123456',

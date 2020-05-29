@@ -1,3 +1,11 @@
+import cx_Oracle
+
+#Oracle dsn_tns
+dsn_tns = cx_Oracle.makedsn(
+    '10.132.131.222',
+    '1521',
+    service_name = 'nweorcl'
+)
 
 # DB
 config_mysql = {

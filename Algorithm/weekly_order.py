@@ -5,6 +5,7 @@ from api.API_MySQL import NWE_Molding_MySQL
 from api.API_Oracle import NWE_Molding_Oracle
 from config.config import config_mysql, config_oracle
 from Algorithm.molding import Mold
+from Algorithm.check_stock import check_stock
 from tqdm import tqdm
 
 
@@ -71,11 +72,12 @@ class preprocessing():
 
 
 	def get_planning_input(self):
-		result = []
+		result = []*len(self.weeklyDemand)
 		print('Start order preprocessing...')
 		print('-----------------------------')
-		for w_d in tqdm(self.weeklyDemand, ascii=True):
-			amount = amount = w_d[1] - w_d[4]
+		for index, w_d in tqdm(enumerate(self.weeklyDemand, ascii=True)):
+			stock_amount = check_stock(w_d[0])
+			amount = w_d[1] - w_d[4] - stock_amount
 			if amount>0:
 				PN = w_d[0]
 				PN_withoutEdit = self.drop_moldSerial(w_d[0])
@@ -94,7 +96,7 @@ class preprocessing():
 						color = 'others'
 					if name == '導光柱' or name == '道光柱':
 						color = '透明'
-					result.append({
+					result[index] = {
 						'鴻海料號': PN_withoutEdit,
 						'帶版料號': PN,
 						'機台': None,

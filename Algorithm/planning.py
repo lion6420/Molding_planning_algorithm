@@ -19,10 +19,11 @@ api_oracle = NWE_Molding_Oracle(
 Id = Identification()
 
 class Planning():
-	def __init__(self, onworking_order, emergency, total_weekly_planning):
+	def __init__(self, onworking_order, emergency, total_weekly_planning, basic_setting):
 		self.onworking_order = onworking_order
 		self.emergency = emergency
 		self.total_weekly_planning = total_weekly_planning
+		self.basic_setting = basic_setting
 		self.record_ordered_part_number = []
 		self.buffer_list = []
 		self.urgent = False
@@ -163,7 +164,7 @@ class Planning():
 			if machine_chosen.order_list:
 				start_time = machine_chosen.order_list[-1].end_time + datetime.timedelta(hours=4)
 			else:
-				start_time = order_start_time + datetime.timedelta(hours=4)
+				start_time = self.basic_setting['order_start_time'] + datetime.timedelta(hours=4)
 			end_time = start_time + datetime.timedelta(hours=hour_needed, minutes=minute_needed)
 			return start_time, end_time, time_needed
 		else:
@@ -173,12 +174,12 @@ class Planning():
 			if machine_chosen.order_list:
 				start_time = machine_chosen.order_list[-1].end_time
 			else:
-				start_time = order_start_time
+				start_time = self.basic_setting['order_start_time']
 			end_time = start_time + datetime.timedelta(hours=hour_needed, minutes=minute_needed)
 			return start_time, end_time, time_needed
 
 	def machine_remaining_time_calculation(self, machine_chosen, end_time):
-		delta_time = (order_end_time - end_time)
+		delta_time = (self.basic_setting['order_end_time'] - end_time)
 		remaining_time = delta_time.days*24 + round(delta_time.seconds/3600, 2)
 		if remaining_time < 0:
 			remaining_time = 0

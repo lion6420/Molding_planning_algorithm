@@ -10,8 +10,8 @@ week = '20'
 
 # 宣告工單起始、結束時間
 #timeNow_list = datetime.datetime.now().date().strftime('%Y-%m-%d').split('-')
-dateNow_list = ['2020', '05', '20']
-dateAfter_list = ['2020', '05', '21']
+dateNow_list = ['2020', '05', '17']
+dateAfter_list = ['2020', '05', '18']
 date = dateNow_list[0] + dateNow_list[1] + dateNow_list[2]
 dateAfter = dateAfter_list[0] + dateAfter_list[1] + dateAfter_list[2]
 order_start_time = datetime.datetime.strptime((dateNow_list[0] + '-' + dateNow_list[1] + '-' + dateNow_list[2] + ' 19:30:00'), '%Y-%m-%d %H:%M:%S')
@@ -34,10 +34,14 @@ prep = preprocessing(path_basic) # 週計畫初始化
 weekly_order = prep.get_planning_input()
 
 #start planning
-P = Planning(onworking_order, emergency_order, weekly_order)
+basic_setting = {
+  'order_start_time': order_start_time,
+  'order_end_time': order_end_time
+}
+P = Planning(onworking_order, emergency_order, weekly_order, basic_setting)
 total_weekly_planning = P.main_function()
 
 # Show and output result
 Factory_NWE.show_line_information()
-# Factory_NWE.to_csv('result' + date)
-# Factory_NWE.output_daily_planning()
+Factory_NWE.to_csv('result' + date)
+Factory_NWE.output_daily_planning()

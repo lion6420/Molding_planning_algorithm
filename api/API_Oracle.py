@@ -9,13 +9,6 @@ config_oracle = {
   'service_name' : 'nweorcl'
 }
 
-#資料庫
-dsn_tns = cx_Oracle.makedsn(
-    '10.132.131.222',
-    '1521',
-    service_name = 'nweorcl'
-)
-
 class NWE_Molding_Oracle(API_Oracle):
   def __init__(self, host, port, user, password, service_name):
     super().__init__(host=host, port=port, user=user, password=password, service_name=service_name)
