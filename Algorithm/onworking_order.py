@@ -1,7 +1,7 @@
 from api.API_Oracle import NWE_Molding_Oracle
 from config.config import config_oracle
 import datetime
-from setting import *
+from factory.NWE import *
 
 api = NWE_Molding_Oracle(
 	config_oracle['host'],
@@ -10,7 +10,7 @@ api = NWE_Molding_Oracle(
 	config_oracle['password'],
 	config_oracle['service_name'])
 
-def get_onworking_order():
+def get_onworking_order(order_start_time):
   filterArgs = {
     'plan_e_time__gt': order_start_time
   }

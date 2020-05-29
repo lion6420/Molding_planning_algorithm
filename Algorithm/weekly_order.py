@@ -4,7 +4,7 @@ import os
 from api.API_MySQL import NWE_Molding_MySQL
 from api.API_Oracle import NWE_Molding_Oracle
 from config.config import config_mysql, config_oracle
-from molding import Mold
+from Algorithm.molding import Mold
 from tqdm import tqdm
 
 

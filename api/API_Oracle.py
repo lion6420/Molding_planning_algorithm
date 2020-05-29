@@ -1,4 +1,5 @@
 from utils.Oracle import API_Oracle
+import cx_Oracle
 
 config_oracle = {
   'host' : '10.132.131.222',
@@ -8,6 +9,12 @@ config_oracle = {
   'service_name' : 'nweorcl'
 }
 
+#資料庫
+dsn_tns = cx_Oracle.makedsn(
+    '10.132.131.222',
+    '1521',
+    service_name = 'nweorcl'
+)
 
 class NWE_Molding_Oracle(API_Oracle):
   def __init__(self, host, port, user, password, service_name):
