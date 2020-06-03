@@ -72,17 +72,21 @@ class preprocessing():
 
 
 	def get_planning_input(self):
-		result = []*len(self.weeklyDemand)
+		result = []
 		print('Start order preprocessing...')
 		print('-----------------------------')
-		for index, w_d in tqdm(enumerate(self.weeklyDemand, ascii=True)):
+		for index, w_d in enumerate(tqdm(self.weeklyDemand, ascii=True)):
 			stock_amount = check_stock(w_d[0])
 			amount = w_d[1] - w_d[4] - stock_amount
 			if amount>0:
 				PN = w_d[0]
 				PN_withoutEdit = self.drop_moldSerial(w_d[0])
 				plastic_number = self.api_oracle.get_plasticNO(PN)
-				name = self.api_oracle.queryFilterOne('MATERIAL', {'ITEM_NO__eq':PN})[7]
+				find_name = self.api_oracle.queryFilterOne('MATERIAL', {'ITEM_NO__eq':PN})
+				if find_name:
+					name = find_name[7]
+				else:
+					name = None
 				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN_withoutEdit]
 				if len(basic_information)>0:
 					tons = basic_information['需求機台'].tolist()[0]
@@ -96,7 +100,7 @@ class preprocessing():
 						color = 'others'
 					if name == '導光柱' or name == '道光柱':
 						color = '透明'
-					result[index] = {
+					result.append({
 						'鴻海料號': PN_withoutEdit,
 						'帶版料號': PN,
 						'機台': None,

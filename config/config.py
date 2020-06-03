@@ -15,6 +15,13 @@ config_mysql = {
   'password' : 'foxconn168!',
   'db' : 'test'}
 
+config_JTtest = {
+  'host' : 'localhost',
+  'port' : 3306,
+  'user' : 'root',
+  'password' : 'tony1234',
+  'db' : 'planning_test'}
+
 config_oracle = {
   'host' : '10.132.131.222',
   'port' : 1521,

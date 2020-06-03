@@ -32,21 +32,91 @@ class API_MySQL():
     self.disconnection()
     return data
 
-  def queryFilter(self, table, **kwargs):
+  def queryFilterAll(self, table, filterArgs):
     self.make_connection()
     sql = "SELECT * FROM " + table + " WHERE "
     count = 0
-    for k, v in kwargs.items():
+    for k, v in filterArgs.items():
+      key = k.split('__')[0]
+      operater = k.split('__')[1]
+      if operater == 'eq':
+        sql_toAppend = key + '=' + '"' + str(v) + '" '
+      elif operater == 'gt': 
+        sql_toAppend = key + '>' + '"' + str(v) + '" '
+      elif operater == 'lt': 
+        sql_toAppend = key + '<' + '"' + str(v) + '" '
+      elif operater == 'gte': 
+        sql_toAppend = key + '>=' + '"' + str(v) + '" '
+      elif operater == 'lte': 
+        sql_toAppend = key + '<=' + '"' + str(v) + '" '
+      
       if count == 0:
-        sql = sql + k + '=' + '"' + str(v) + '" '
-        count+=1
-      else: 
-        sql = sql + 'and ' + k + '=' + '"' + str(v) + '" '
-        count+=1
+        sql = sql + sql_toAppend
+      else:
+        sql = sql + ' and ' + sql_toAppend
+      count+=1
     self.cursor.execute(sql)
     data = self.cursor.fetchall()
     self.disconnection()
     return data
+  
+  def queryFilterOne(self, table, filterArgs):
+    self.make_connection()
+    sql = "SELECT * FROM " + table + " WHERE "
+    count = 0
+    for k, v in filterArgs.items():
+      key = k.split('__')[0]
+      operater = k.split('__')[1]
+      if operater == 'eq':
+        sql_toAppend = key + '=' + '"' + str(v) + '" '
+      elif operater == 'gt': 
+        sql_toAppend = key + '>' + '"' + str(v) + '" '
+      elif operater == 'lt': 
+        sql_toAppend = key + '<' + '"' + str(v) + '" '
+      elif operater == 'gte': 
+        sql_toAppend = key + '>=' + '"' + str(v) + '" '
+      elif operater == 'lte': 
+        sql_toAppend = key + '<=' + '"' + str(v) + '" '
+      
+      if count == 0:
+        sql = sql + sql_toAppend
+      else:
+        sql = sql + ' and ' + sql_toAppend
+      count+=1
+    self.cursor.execute(sql)
+    data = self.cursor.fetchone()
+    self.disconnection()
+    return data
+
+  def insertMany(self, table, col, values):
+    self.make_connection()
+    col_number = len(col.split(','))
+    sql = "INSERT INTO " + table + " " + col + " VALUES ("
+    for index in range(col_number):
+      if (index == (col_number-1)):
+        sql = sql + "%s)"
+      else:
+        sql = sql + "%s,"
+    
+    self.cursor.executemany(sql, values)
+    self.conn.commit()
+    self.disconnection()
+    return 'Insert finished'
+
+  def insertOne(self, table, col, value):
+    self.make_connection()
+    col_number = len(col.split(','))
+    sql = "INSERT INTO " + table + " " + col + " VALUES ("
+    for index in range(col_number):
+      if (index == (col_number-1)):
+        sql = sql + "%s)"
+      else:
+        sql = sql + "%s,"
+
+    self.cursor.execute(sql, value)
+    self.conn.commit()
+    self.disconnection()
+    return 'Insert finished'
 
   def updateOne(self, table, **kwargs):
     self.make_connection()

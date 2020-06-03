@@ -45,23 +45,22 @@ class Planning():
 			if time_needed == None:
 				return False
 			# Put into order
-			newOrder = Order(order['鴻海料號'], order['品名'], math.ceil(time_needed*order['產能']), \
+			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['顏色'], math.ceil(time_needed*order['產能']), \
 											order['產能'], start_time, end_time, time_needed, urgent_tag=self.urgent)
+			machine_chosen.order_list.append(newOrder)
 			# 修改資料庫週數量
 			api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
 		else:
 			machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
 			end_time = order['結束時間']
-			newOrder = Order(order['鴻海料號'], order['品名'], order['總需求'], \
+			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['顏色'], order['總需求'], \
 										   order['產能'], order['起始時間'], order['結束時間'], order['生產時間'], urgent_tag=self.urgent)
-			
+			machine_chosen.order_list.append(newOrder)
+
 		#機台剩餘時間扣減	
 		remainig_time = self.machine_remaining_time_calculation(machine_chosen, end_time)
 		machine_chosen.remaining_time = remainig_time
 		
-		
-		
-		machine_chosen.order_list.append(newOrder)
 		self.record_ordered_part_number.append(newOrder.part_number)
 
 		# Reset default status
@@ -78,41 +77,25 @@ class Planning():
 		# Find fittable machine
 		machine_chosen_list = []
 		machine_chosen = None
-
 		#-3 Condition 3: Normal
 		for line in Factory_NWE.line_list:
 			temp_list = line.get_ok_machine() # step 1: check if machines are able to be used
+			if temp_list == []:
+				continue
 			temp_list = line.get_machine_by_tons(tons, machine_list=temp_list) # step 2: tons
+			if temp_list == []:
+				continue
 			temp_list = line.get_machine_by_color(color, machine_list=temp_list) # step 3: color
-			if temp_list != []:
-				machine_chosen = line.get_biggest_remaining_time(machine_list=temp_list) # step 4: remaining time
-			if machine_chosen != None:
+			if temp_list == []:
+				continue
+			machine_chosen = line.get_biggest_remaining_time(machine_list=temp_list) # step 4: remaining time
+			if machine_chosen:
 				machine_chosen_list.append(machine_chosen)
 		
-		if machine_chosen_list == [] and self.urgent == True: #-3-(1) Type1: if it is in urgent mode and no usable machine, release on
-			self.release = False # release on
-			machine_chosen = None
-			for line in Factory_NWE.line_list:
-				temp_list = line.get_ok_machine()
-				temp_list = line.get_machine_by_tons(tons, machine_list=temp_list)
-				machine_chosen_list = line.get_machine_by_color(color, machine_list=temp_list)
-				for m in machine_chosen_list:
-					if m.order_list[0].urgent_tag == False and m.order_list[0].planning_time == 24.0:
-						machine_chosen = m
-						break
-					else:
-						continue
-			if machine_chosen:
-				return machine_chosen
-			else:
-				print('Warning : Emergency part number : ' + order['鴻海料號'] + ' did not been ordered.')
-				self.buffer_list.append(order)
-				return None
-
-		elif machine_chosen_list == []: #-3-(2) Type2: if no machine is usable, return None
+		if machine_chosen_list == []: #-3-(1) Type2: if no machine is usable, return None
 			return None
 
-		else: #-3-(3) Type3: plural machine is usable, find the best one (the longest remaining time); or the best machine had been found
+		else: #-3-(2) Type3: plural machine is usable, find the best one (the longest remaining time); or the best machine had been found
 			keep_max = machine_chosen_list[0]
 			for m in machine_chosen_list:
 				if m.remaining_time > keep_max.remaining_time:
@@ -130,29 +113,20 @@ class Planning():
 		if time_needed > 72.0:
 			time_needed = 72.0
 
+		if (len(machine_chosen.order_list) == 0):
+			self.mold_change = False
+
 		# Calculate start time, end time
-		# if it is the first order of this machine
-		if len(machine_chosen.order_list) == 0 and machine_chosen.ontime_order != []:
-			if machine_chosen.ontime_order[0].part_number == order['鴻海料號']:
-				start_time, end_time, time_needed = self.time_calculation(False, time_needed, machine_chosen)
-			else:
-				start_time, end_time, time_needed = self.time_calculation(True, time_needed, machine_chosen)
-
-		elif len(machine_chosen.order_list) == 0 and machine_chosen.ontime_order == []:
+		# if it is no need mold changing
+		if self.mold_change == False:
 			start_time, end_time, time_needed = self.time_calculation(False, time_needed, machine_chosen)
-		else:
-			# if it is no need mold changing
-			if self.mold_change == False:
-				start_time, end_time, time_needed = self.time_calculation(False, time_needed, machine_chosen)
 
-				# if mold changing is required, another 4 hours is needed
-			else:
-				start_time, end_time, time_needed = self.time_calculation(True, time_needed, machine_chosen)
+			# if mold changing is required, another 4 hours is needed
+		else:
+			start_time, end_time, time_needed = self.time_calculation(True, time_needed, machine_chosen)
 		
 		if time_needed == None:
 			return None, None, None
-		
-		order['總需求'] = order['總需求'] - time_needed*order['產能'] # calcuate the remained demand
 		
 		return start_time, end_time, time_needed
 
