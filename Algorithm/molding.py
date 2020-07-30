@@ -330,7 +330,7 @@ class Factory():
         
 
     def to_csv(self, name):
-        week = '18'
+        week = '30'
         result_dic = {}
         tons_list = []
         machine_name_list = []

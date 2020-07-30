@@ -5,6 +5,7 @@ __pycache__/
 
 #Algorithm results
 *.csv
+*.xlsx
 results/
 basic_information/
 

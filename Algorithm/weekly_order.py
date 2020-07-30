@@ -7,10 +7,11 @@ from config.config import config_mysql, config_oracle
 from Algorithm.molding import Mold
 from Algorithm.check_stock import check_stock
 from tqdm import tqdm
+from .DataStructure.Planning import ReadyQueue
 
 
 class preprocessing():
-	def __init__(self, path_basic):
+	def __init__(self, path_basic, week_plan_input_time):
 		self.api_mysql = NWE_Molding_MySQL(
 			config_mysql['host'],
 			config_mysql['port'], 
@@ -31,8 +32,9 @@ class preprocessing():
 			config_oracle['service_name']
 		)
 		self.basic_df = pd.read_excel(path_basic + 'molding_basic_information.xlsx')
-		self.weeklyDemand = self.api_oracle.queryAll('week_plan')
+		self.weeklyDemand = self.api_oracle.queryFilterAll('week_plan', {'timestamp__gt': week_plan_input_time})
 		self.base10List = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+		self.planningReadyQueue = ReadyQueue()
 	
 	def if_int(self, str):
 		if str in self.base10List:
@@ -51,6 +53,18 @@ class preprocessing():
 			return data[1]
 		else:
 			return 'others'
+
+	def cal_priority(self, moldAmount, urgent_tag):
+		if urgent_tag == True:
+			return 0
+		elif moldAmount > 1:
+			return 1
+		elif moldAmount > 0.5: 
+			return 2
+		elif moldAmount > 0.3:
+			return 3
+		else:
+			return 4
 
 	# def get_UPH(self, PN):# 模具資料
 	# 	data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN})
@@ -75,32 +89,52 @@ class preprocessing():
 		result = []
 		print('Start order preprocessing...')
 		print('-----------------------------')
+		# temp for debug #
+		PN_debug = []
+		tons_debug = []
+		UPH_debug = []
+		color_debug = []
+		amount_debug = []
+		# #
 		for index, w_d in enumerate(tqdm(self.weeklyDemand, ascii=True)):
+			# 檢查庫存
 			stock_amount = check_stock(w_d[0])
-			amount = w_d[1] - w_d[4] - stock_amount
+			if (w_d[4]):
+				amount = w_d[1] - w_d[4] - stock_amount
+			else:
+				amount = w_d[1] - 0 - stock_amount
+
+			# 扣減庫剩餘需求
 			if amount>0:
 				PN = w_d[0]
 				PN_withoutEdit = self.drop_moldSerial(w_d[0])
-				plastic_number = self.api_oracle.get_plasticNO(PN)
-				find_name = self.api_oracle.queryFilterOne('MATERIAL', {'ITEM_NO__eq':PN})
+				plastic_number = self.api_oracle.get_plasticNO(PN) # 找對應塑膠粒
+				find_name = self.api_oracle.queryFilterOne('MATERIAL', {'ITEM_NO__eq':PN}) # 找品名
 				if find_name:
 					name = find_name[7]
 				else:
 					name = None
-				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN_withoutEdit]
+				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN_withoutEdit] # 找基本資料(噸位、UPH)
 				if len(basic_information)>0:
 					tons = basic_information['需求機台'].tolist()[0]
 					UPH = round(basic_information['產能(PCS/H)'].tolist()[0], 2)
+					PN_debug.append(PN) #debug
+					tons_debug.append(tons) #debug
+					UPH_debug.append(UPH) #debug
+					amount_debug.append(amount) #debug
 				else:
 					continue
 				if UPH > 0:
 					if plastic_number:
-						color = self.get_color(self.drop_moldSerial(plastic_number))
+						color = self.get_color(self.drop_moldSerial(plastic_number)) # 查顏色
 					else:
 						color = 'others'
 					if name == '導光柱' or name == '道光柱':
 						color = '透明'
-					result.append({
+					color_debug.append(color) #debug
+					moldAmount = amount/(UPH*24*7)
+					priority = self.cal_priority(moldAmount, False)
+					self.planningReadyQueue.enqueue({
 						'鴻海料號': PN_withoutEdit,
 						'帶版料號': PN,
 						'機台': None,
@@ -112,6 +146,8 @@ class preprocessing():
 						'生產時間': None,
 						'起始時間': None,
 						'結束時間': None,
+						'模具數': moldAmount,
+						'priority': priority
 					})
 				else:
 					continue
@@ -119,4 +155,7 @@ class preprocessing():
 				continue
 		print('Prerocessing succeeded.')
 		print('Start planning...')
-		return result
+		debug_dic = {'PN': PN_debug, 'tons': tons_debug, 'UPH': UPH_debug, 'color': color_debug, 'amount': amount_debug}
+		debug_df = pd.DataFrame(debug_dic)
+		debug_df.to_csv('./' + 'debug_20200727' + '.csv', encoding='utf_8_sig', index=False) 
+		return self.planningReadyQueue

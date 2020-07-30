@@ -193,8 +193,10 @@ class Planning():
 		# 		if_succeed = self.planning(input)
 		# self.urgent = False # urgent mode off
 
-
-		for input in self.total_weekly_planning:
+		weekly_order_number = self.total_weekly_planning.get_orderNumber()
+		while(weekly_order_number>0):
+			weekly_order_number-=1
+			input = self.total_weekly_planning.dequeue().value
 			if input['鴻海料號'] in self.record_ordered_part_number:
 				continue
 			else:
