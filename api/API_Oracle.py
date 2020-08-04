@@ -30,3 +30,15 @@ class NWE_Molding_Oracle(API_Oracle):
     self.updateOne('week_plan', real_NO=amount, Part_NO=PN)
     return 'finish'
 
+  def check_machineBinded(self, PN):
+    queryResult = self.queryFilterAll('special_part_No', {'Part_NO__eq':PN})
+    if (PN == '1B33LM400-02EWA'):
+      print(queryResult)
+    machine_list = []
+    if queryResult != None:
+      for query in queryResult:
+        machine_list.append(query[0])
+      return machine_list
+    else:
+      return []
+

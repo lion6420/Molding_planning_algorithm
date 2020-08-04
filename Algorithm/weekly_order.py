@@ -8,10 +8,11 @@ from Algorithm.molding import Mold
 from Algorithm.check_stock import check_stock
 from tqdm import tqdm
 from .DataStructure.Planning import ReadyQueue
+import math
 
 
 class preprocessing():
-	def __init__(self, path_basic, week_plan_input_time):
+	def __init__(self, path_basic, week_plan_input_time, week_plan_end_time, order_start_time, onworking_order):
 		self.api_mysql = NWE_Molding_MySQL(
 			config_mysql['host'],
 			config_mysql['port'], 
@@ -33,6 +34,9 @@ class preprocessing():
 		)
 		self.basic_df = pd.read_excel(path_basic + 'molding_basic_information.xlsx')
 		self.weeklyDemand = self.api_oracle.queryFilterAll('week_plan', {'timestamp__gt': week_plan_input_time})
+		self.order_start_time = order_start_time
+		self.week_plan_end_time = week_plan_end_time
+		self.onworking_order = onworking_order
 		self.base10List = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 		self.planningReadyQueue = ReadyQueue()
 	
@@ -54,17 +58,25 @@ class preprocessing():
 		else:
 			return 'others'
 
-	def cal_priority(self, moldAmount, urgent_tag):
-		if urgent_tag == True:
+	def check_machineBinded(self, PN):
+		machine_binded = self.api_oracle.check_machineBinded(PN)
+		return machine_binded
+
+	def cal_priority(self, moldAmount, urgent_tag, binded, onWork_tag):
+		if onWork_tag == True:
 			return 0
-		elif moldAmount > 1:
+		if urgent_tag == True:
 			return 1
-		elif moldAmount > 0.5: 
+		elif len(binded) > 0:
 			return 2
-		elif moldAmount > 0.3:
+		elif moldAmount > 1:
 			return 3
-		else:
+		elif moldAmount > 0.5: 
 			return 4
+		elif moldAmount > 0.3:
+			return 5
+		else:
+			return 6
 
 	# def get_UPH(self, PN):# 模具資料
 	# 	data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN})
@@ -109,15 +121,16 @@ class preprocessing():
 				PN = w_d[0]
 				PN_withoutEdit = self.drop_moldSerial(w_d[0])
 				plastic_number = self.api_oracle.get_plasticNO(PN) # 找對應塑膠粒
-				find_name = self.api_oracle.queryFilterOne('MATERIAL', {'ITEM_NO__eq':PN}) # 找品名
-				if find_name:
-					name = find_name[7]
-				else:
-					name = None
-				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN_withoutEdit] # 找基本資料(噸位、UPH)
+				# find_name = self.api_oracle.queryFilterOne('MATERIAL', {'ITEM_NO__eq':PN}) # 找品名
+				# if find_name:
+				# 	name = find_name[7]
+				# else:
+				# 	name = None
+				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN_withoutEdit] # 找基本資料(噸位、UPH、品名)
 				if len(basic_information)>0:
 					tons = basic_information['需求機台'].tolist()[0]
 					UPH = round(basic_information['產能(PCS/H)'].tolist()[0], 2)
+					name = basic_information['品名'].tolist()[0]
 					PN_debug.append(PN) #debug
 					tons_debug.append(tons) #debug
 					UPH_debug.append(UPH) #debug
@@ -132,23 +145,53 @@ class preprocessing():
 					if name == '導光柱' or name == '道光柱':
 						color = '透明'
 					color_debug.append(color) #debug
-					moldAmount = amount/(UPH*24*7)
-					priority = self.cal_priority(moldAmount, False)
-					self.planningReadyQueue.enqueue({
-						'鴻海料號': PN_withoutEdit,
-						'帶版料號': PN,
-						'機台': None,
-						'品名': name,
-						'噸位': tons,
-						'顏色': color,
-						'總需求': amount,
-						'產能': UPH,
-						'生產時間': None,
-						'起始時間': None,
-						'結束時間': None,
-						'模具數': moldAmount,
-						'priority': priority
-					})
+
+					## 計算模具數量
+					dateRemaind = (self.week_plan_end_time - self.order_start_time).days # 計算需要的模具數量(一週七天)
+					if dateRemaind<1:
+						dateRemaind = 1
+					moldAmount = amount/(UPH*24*dateRemaind)
+
+					machine_binded_list = self.check_machineBinded(PN)
+					moldNumber = math.ceil(moldAmount) # 大於7天的料號拆多台機，最多三台
+					if moldNumber>3:
+						moldNumber = 3
+					if len(machine_binded_list)>0 and moldNumber > len(machine_binded_list): # if 有綁定機台，最大機台數量依據綁定機台數量
+						moldNumber = len(machine_binded_list)
+					amount = amount//moldNumber
+
+					input_machine = None
+					for i in range(moldNumber):
+						onWork_tag = False
+						if len(machine_binded_list)>0:
+							input_machine = machine_binded_list[i]
+						else:
+							# onwork_binded
+							for onworking_order_index, eachOnworkOrder in enumerate(self.onworking_order):
+								if eachOnworkOrder['鴻海料號'] == PN_withoutEdit:
+									if input_machine == eachOnworkOrder['機台']:
+										continue
+									else:
+										onWork_tag = True
+										input_machine = eachOnworkOrder['機台']
+						priority = self.cal_priority(moldAmount, False, machine_binded_list, onWork_tag) # calc Priority
+						
+						# put into queue
+						self.planningReadyQueue.enqueue({
+							'鴻海料號': PN_withoutEdit,
+							'帶版料號': PN,
+							'機台': input_machine,
+							'品名': name,
+							'噸位': tons,
+							'顏色': color,
+							'總需求': amount,
+							'產能': UPH,
+							'生產時間': None,
+							'起始時間': None,
+							'結束時間': None,
+							'模具數': moldAmount,
+							'priority': priority
+						})
 				else:
 					continue
 			else:
@@ -157,5 +200,5 @@ class preprocessing():
 		print('Start planning...')
 		debug_dic = {'PN': PN_debug, 'tons': tons_debug, 'UPH': UPH_debug, 'color': color_debug, 'amount': amount_debug}
 		debug_df = pd.DataFrame(debug_dic)
-		debug_df.to_csv('./' + 'debug_20200727' + '.csv', encoding='utf_8_sig', index=False) 
+		debug_df.to_csv('./' + 'debug_20200731' + '.csv', encoding='utf_8_sig', index=False) 
 		return self.planningReadyQueue

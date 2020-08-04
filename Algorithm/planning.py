@@ -35,22 +35,27 @@ class Planning():
 		self.plastic_change = True
 
 	def planning(self, order):
-		# Get fitted machine
-		if order['機台'] == None:
-			machine_chosen = self.find_fitted_machine(order)
+		## Get fitted machine
+		if order['機台'] == None or order['結束時間'] == None:
+			if order['機台'] != None: # Special PN binded to specific machine
+				machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
+				if machine_chosen.remaining_time == 0:
+					return False
+			else: # Normal PN
+				machine_chosen = self.find_fitted_machine(order)
 			if machine_chosen == None: # No machine available for this order
 				return False
-			# Time calculation
+			## Time calculation
 			start_time, end_time, time_needed = self.time_function(order, machine_chosen)
 			if time_needed == None:
 				return False
-			# Put into order
+			## Put into order
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['顏色'], math.ceil(time_needed*order['產能']), \
 											order['產能'], start_time, end_time, time_needed, urgent_tag=self.urgent)
 			machine_chosen.order_list.append(newOrder)
 			# 修改資料庫週數量
 			api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
-		else:
+		else: # Onworking order
 			machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
 			end_time = order['結束時間']
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['顏色'], order['總需求'], \
@@ -113,7 +118,9 @@ class Planning():
 		if time_needed > 72.0:
 			time_needed = 72.0
 
-		if (len(machine_chosen.order_list) == 0):
+		if len(machine_chosen.order_list) == 0:
+			self.mold_change = False
+		elif machine_chosen.order_list[-1].part_number == order['鴻海料號']:
 			self.mold_change = False
 
 		# Calculate start time, end time
@@ -181,34 +188,12 @@ class Planning():
 								self.bind_machine = m
 								if_succeed = self.planning(input)
 
-		# self.urgent = False # urgent mode on
-		# for e in range(len(Emergency)):
-		# 	input = Emergency.loc[index[e]]
-		# 	if input['鴻海料號'] in self.record_ordered_part_number and input['模具數'] == 1:
-		# 			continue
-		# 	elif input['鴻海料號'] in self.record_ordered_part_number and input['模具數'] > 1:
-		# 		for m_n in range(input['模具數']-1):
-		# 			if_succeed = self.planning(input)
-		# 	else:
-		# 		if_succeed = self.planning(input)
-		# self.urgent = False # urgent mode off
-
 		weekly_order_number = self.total_weekly_planning.get_orderNumber()
 		while(weekly_order_number>0):
 			weekly_order_number-=1
 			input = self.total_weekly_planning.dequeue().value
-			if input['鴻海料號'] in self.record_ordered_part_number:
-				continue
-			else:
-				if_succeed = self.planning(input)
+			if_succeed = self.planning(input)
 			if self.if_stop == True:
 				break
 
-		# # 4. Add buffer
-		# self.buffer = False # buffer mode on
-		# for input in self.buffer_list:
-		#     if_succeed = self.planning(input)
-		# self.buffer = False # buffer mode off
-
-		
 		return self.total_weekly_planning

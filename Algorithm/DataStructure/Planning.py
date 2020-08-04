@@ -30,9 +30,14 @@ class ReadyQueue():
   def get_orderNumber(self):
     return self.orderList.length
 
-  def printPriority(self):
+  def printElement(self):
     node = self.orderList.head
     while(node):
+      print(node.value['鴻海料號'])
+      print(node.value['噸位'])
+      print(node.value['顏色'])
+      print(node.value['總需求'])
       print(node.value['priority'])
+      print('-------------------------------')
       node = node.next
          
