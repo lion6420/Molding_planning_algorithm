@@ -13,17 +13,14 @@ def myconverter(r):
 
 # 工單
 class Order():
-    part_number = ''
-    part_name = ''
-    start_time = ''
-    end_time = ''
-    planning_time = ''
-    def __init__(self, part_number, part_name, tons, color, amount, UPH, start_time, end_time, planning_time, \
+    def __init__(self, part_number, part_name, tons, plastic_number, color, mold, amount, UPH, start_time, end_time, planning_time, \
                  urgent_tag=False):
         self.part_number = part_number
         self.part_name = part_name
         self.tons = tons
+        self.plastic_number = plastic_number
         self.color = color
+        self.mold = mold
         self.amount = amount
         self.UPH = UPH
         self.start_time = start_time
@@ -34,13 +31,14 @@ class Order():
 
 # 模具
 class Mold():
-	def __init__(self, PN, CMDIE_NO, DIE_NO, CT, HOLENUM, STORE_ID):
+	def __init__(self, PN, MJDW, CMDIE_NO, DIE_NO, HOLENUM, STORE_ID, STATUS):
 		self.PN = PN
+        self.MJDW = MJDW
 		self.CMDIE_NO = CMDIE_NO
 		self.DIE_NO = DIE_NO
-		self.CT = CT
 		self.HOLENUM = HOLENUM
 		self.STORE_ID = STORE_ID
+        self.STATUS = STATUS
 
 	def show_mold_information(self):
 		print('鴻海料號: ', self.PN)
@@ -57,12 +55,6 @@ class Mold():
 
 # 機台
 class Machine():
-    name = ''
-    tons = ''
-    color = ''
-    status = 1
-    order_list = []
-    max_usable_time = 24.0
     def __init__(self, name, tons, color, status, order_list, remaining_time):
         self.name = name
         self.tons = tons
@@ -318,7 +310,7 @@ class Factory():
                         tons = 130
                     else:
                         continue
-                    data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'M2', 'M2', 'M2', 'M2', 'M2', o.part_name, o.amount, 1, 'M', 'M', 'M2', 0, 0, 'M2', 4, o.color, 'M2')
+                    data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'null', 'null', 'null', 'null', 'null', o.part_name, o.amount, 1, 'null', 'null', 'null', 0, 0, 'null', 4, o.color, 'null')
                     # oracle
                     sql = '''INSERT INTO "arrangement_result" ("machine_NO", "machine_ton", "mold_down_t", "plan_s_time", "plan_e_time", "plan_work_time", "Part_NO", "machine_CT", "UPH", "mold_edit", "mold_Serial", "mold_NO", "mold_position", "package_size", "product_name", "plan_number", "emergency", "mass_pro", "need", "same_mold_part_NO", "value", "total_value", "plastic_Part_NO", "mold_changeover_time", "plastic_color", "note", "Seq") VALUES (:1, :2, TO_DATE(:3,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:4,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:5,'YYYY-MM-DD HH24:MI:SS'), :6, :7, :8, :9, :10, :11, :12, :13, :14, :15, :16, :17, :18, :19, :20, :21, :22, :23, :24, :25, :26, ARRANGEMENT_SEQ.NEXTVAL)'''
                     cursor.execute(sql, data)

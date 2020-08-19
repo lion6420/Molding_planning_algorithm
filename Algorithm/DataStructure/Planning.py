@@ -27,7 +27,7 @@ class ReadyQueue():
 
     self.orderList.head = dummy.next
 
-  def get_orderNumber(self):
+  def get_orderAmount(self):
     return self.orderList.length
 
   def printElement(self):
@@ -40,4 +40,10 @@ class ReadyQueue():
       print(node.value['priority'])
       print('-------------------------------')
       node = node.next
-         
+
+class pendingQueue(ReadyQueue):
+  def __init__(self):
+    self.pendingList = LinkedList()
+  
+  def showPendingDetail(self):
+    pass

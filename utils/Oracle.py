@@ -34,9 +34,15 @@ class API_Oracle():
     self.disconnection()
     return data
 
-  def queryFilterAll(self, table, filterArgs):
+  def queryFilterAll(self, table, filterArgs, cols=[]):
     self.make_connection()
-    sql = 'SELECT * FROM "' + table + '" WHERE '
+    if (len(cols)>0):
+      sql = 'SELECT '
+      for (index,col) in enumerate(cols):
+        if (index == len(cols)-1): sql = sql + col + ' FROM "' + table + '" WHERE '
+        else: sql = sql + col + ','
+    else:
+      sql = 'SELECT * FROM "' + table + '" WHERE '
     count = 0
     input = {}
     for k, v in filterArgs.items():

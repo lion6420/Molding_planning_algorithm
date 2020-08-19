@@ -33,7 +33,7 @@ class preprocessing():
 			config_oracle['service_name']
 		)
 		self.basic_df = pd.read_excel(path_basic + 'molding_basic_information.xlsx')
-		self.weeklyDemand = self.api_oracle.queryFilterAll('week_plan', {'timestamp__gt': week_plan_input_time})
+		self.weeklyDemand = self.api_oracle.queryFilterAll('week_plan', {'timestamp__bt': [week_plan_input_time, week_plan_end_time]})
 		self.order_start_time = order_start_time
 		self.week_plan_end_time = week_plan_end_time
 		self.onworking_order = onworking_order
@@ -96,6 +96,22 @@ class preprocessing():
 	# 		print(PN)
 	# 		return None
 
+	def get_mold(self, PN):
+		cols = ['MJDW', 'CMDIE_NO', 'DIE_NO', 'HOLENUM', 'STORE_ID', 'STATUS']
+		allMold = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN, 'STATUS__eq': '正常入庫'}, cols=cols)
+		count=0
+		i=0
+		while(True):
+			if int(allMold[i][1][1]) < int(allMold[i+1][1][1]): # 模序由大到小排序
+				allMold[i], allMold[i+1] = allMold[i+1], allMold[i]
+				count+=1
+			i+=1
+			if(i==len(allMold)):
+				if count == 0:
+					break
+				else:
+					i=0
+		return allMold[0] #return 模序最大的
 
 	def get_planning_input(self):
 		result = []
@@ -120,7 +136,7 @@ class preprocessing():
 			if amount>0:
 				PN = w_d[0]
 				PN_withoutEdit = self.drop_moldSerial(w_d[0])
-				plastic_number = self.api_oracle.get_plasticNO(PN) # 找對應塑膠粒
+				plastic_number = self.api_oracle.get_plasticNO(PN_withoutEdit) # 找對應塑膠粒
 				# find_name = self.api_oracle.queryFilterOne('MATERIAL', {'ITEM_NO__eq':PN}) # 找品名
 				# if find_name:
 				# 	name = find_name[7]
@@ -139,7 +155,7 @@ class preprocessing():
 					continue
 				if UPH > 0:
 					if plastic_number:
-						color = self.get_color(self.drop_moldSerial(plastic_number)) # 查顏色
+						color = self.get_color(plastic_number) # 查顏色
 					else:
 						color = 'others'
 					if name == '導光柱' or name == '道光柱':
@@ -162,12 +178,17 @@ class preprocessing():
 
 					input_machine = None
 					for i in range(moldNumber):
+						# moldQuery = self.get_mold(PN_withoutEdit)
+						# if len(moldQuery) == 0: # 如果沒模具可以用
+						# 	break
+						# mold_chosen = Mold(PN_withoutEdit, moldQuery[0], moldQuery[1], moldQuery[2], moldQuery[3], moldQuery[4], moldQuery[5]) # 模具
+
 						onWork_tag = False
 						if len(machine_binded_list)>0:
 							input_machine = machine_binded_list[i]
 						else:
 							# onwork_binded
-							for onworking_order_index, eachOnworkOrder in enumerate(self.onworking_order):
+							for onworking_order_index, eachOnworkOrder in enumerate(self.onworking_order): # 昨天已排上機的工單，先拉出來綁在同一台上
 								if eachOnworkOrder['鴻海料號'] == PN_withoutEdit:
 									if input_machine == eachOnworkOrder['機台']:
 										continue

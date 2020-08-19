@@ -1,6 +1,7 @@
 from api.API_Oracle import NWE_Molding_Oracle
 from api.API_MySQL import NWE_Molding_MySQL
 from config.config import config_oracle, config_JTtest
+from Algorithm.molding import Mold
 import datetime
 from factory.NWE import *
 
