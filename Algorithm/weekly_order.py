@@ -159,7 +159,7 @@ class preprocessing():
 									else:
 										onWork_tag = True
 										input_machine = eachOnworkOrder['機台']
-										del eachOnworkOrder[onworking_order_index]
+										del self.onworking_order[onworking_order_index]
 										break
 						priority = self.cal_priority(moldAmount, False, machine_binded_list, onWork_tag) # calc Priority
 						
