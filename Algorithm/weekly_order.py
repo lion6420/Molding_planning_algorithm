@@ -12,7 +12,7 @@ import math
 
 
 class preprocessing():
-	def __init__(self, path_basic, week_plan_input_time, week_plan_end_time, order_start_time, onworking_order):
+	def __init__(self, path_basic, week, week_plan_end_time, order_start_time, onworking_order):
 		self.api_mysql = NWE_Molding_MySQL(
 			config_mysql['host'],
 			config_mysql['port'], 
@@ -33,7 +33,7 @@ class preprocessing():
 			config_oracle['service_name']
 		)
 		self.basic_df = pd.read_excel(path_basic + 'molding_basic_information.xlsx')
-		self.weeklyDemand = self.api_oracle.queryFilterAll('week_plan', {'timestamp__bt': [week_plan_input_time, week_plan_end_time]})
+		self.weeklyDemand = self.api_oracle.queryFilterAll('week_plan', {'week_NO__eq': week})
 		self.order_start_time = order_start_time
 		self.week_plan_end_time = week_plan_end_time
 		self.onworking_order = onworking_order
@@ -78,52 +78,22 @@ class preprocessing():
 		else:
 			return 6
 
-	# def get_UPH(self, PN):# 模具資料
-	# 	data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN})
-	# 	if data:
-	# 		keep_best_mold = data[0]
-	# 		for d in data:
-	# 			if d[15]!=None and d[15] < keep_best_mold[15]:
-	# 				keep_best_mold = d
-	# 			else:
-	# 				continue
-	# 		if keep_best_mold[15] == None:
-	# 			print('second')
-	# 			return None
-	# 		mold_data = Mold(PN, keep_best_mold[8], keep_best_mold[11], keep_best_mold[15], keep_best_mold[12], keep_best_mold[30])
-	# 		return mold_data.get_UPH()
-	# 	else:
-	# 		print(PN)
-	# 		return None
-
-	def get_mold(self, PN):
-		cols = ['MJDW', 'CMDIE_NO', 'DIE_NO', 'HOLENUM', 'STORE_ID', 'STATUS']
-		allMold = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN, 'STATUS__eq': '正常入庫'}, cols=cols)
-		count=0
-		i=0
-		while(True):
-			if int(allMold[i][1][1]) < int(allMold[i+1][1][1]): # 模序由大到小排序
-				allMold[i], allMold[i+1] = allMold[i+1], allMold[i]
-				count+=1
-			i+=1
-			if(i==len(allMold)):
-				if count == 0:
-					break
+	def get_mold(self, PN):# 模具資料
+		data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN})
+		if data:
+			keep_best_mold = data[0]
+			for d in data:
+				if int(d[11][1:]) > int(keep_best_mold[11][1:]):
+					keep_best_mold = d
 				else:
-					i=0
-		return allMold[0] #return 模序最大的
+					continue
+			mold_data = Mold(PN, keep_best_mold[13], keep_best_mold[8], keep_best_mold[11], keep_best_mold[12], keep_best_mold[30], keep_best_mold[25])
+			return mold_data
+		else:
+			return None
 
 	def get_planning_input(self):
 		result = []
-		print('Start order preprocessing...')
-		print('-----------------------------')
-		# temp for debug #
-		PN_debug = []
-		tons_debug = []
-		UPH_debug = []
-		color_debug = []
-		amount_debug = []
-		# #
 		for index, w_d in enumerate(tqdm(self.weeklyDemand, ascii=True)):
 			# 檢查庫存
 			stock_amount = check_stock(w_d[0])
@@ -147,10 +117,6 @@ class preprocessing():
 					tons = basic_information['需求機台'].tolist()[0]
 					UPH = round(basic_information['產能(PCS/H)'].tolist()[0], 2)
 					name = basic_information['品名'].tolist()[0]
-					PN_debug.append(PN) #debug
-					tons_debug.append(tons) #debug
-					UPH_debug.append(UPH) #debug
-					amount_debug.append(amount) #debug
 				else:
 					continue
 				if UPH > 0:
@@ -160,7 +126,6 @@ class preprocessing():
 						color = 'others'
 					if name == '導光柱' or name == '道光柱':
 						color = '透明'
-					color_debug.append(color) #debug
 
 					## 計算模具數量
 					dateRemaind = (self.week_plan_end_time - self.order_start_time).days # 計算需要的模具數量(一週七天)
@@ -178,10 +143,9 @@ class preprocessing():
 
 					input_machine = None
 					for i in range(moldNumber):
-						# moldQuery = self.get_mold(PN_withoutEdit)
-						# if len(moldQuery) == 0: # 如果沒模具可以用
-						# 	break
-						# mold_chosen = Mold(PN_withoutEdit, moldQuery[0], moldQuery[1], moldQuery[2], moldQuery[3], moldQuery[4], moldQuery[5]) # 模具
+						mold_chosen = self.get_mold(PN_withoutEdit) # 模具
+						if mold_chosen == None: # 如果沒模具可以用
+							break
 
 						onWork_tag = False
 						if len(machine_binded_list)>0:
@@ -195,6 +159,8 @@ class preprocessing():
 									else:
 										onWork_tag = True
 										input_machine = eachOnworkOrder['機台']
+										del eachOnworkOrder[onworking_order_index]
+										break
 						priority = self.cal_priority(moldAmount, False, machine_binded_list, onWork_tag) # calc Priority
 						
 						# put into queue
@@ -204,6 +170,8 @@ class preprocessing():
 							'機台': input_machine,
 							'品名': name,
 							'噸位': tons,
+							'模具': mold_chosen,
+							'塑膠料號': plastic_number,
 							'顏色': color,
 							'總需求': amount,
 							'產能': UPH,
@@ -217,9 +185,5 @@ class preprocessing():
 					continue
 			else:
 				continue
-		print('Prerocessing succeeded.')
-		print('Start planning...')
-		debug_dic = {'PN': PN_debug, 'tons': tons_debug, 'UPH': UPH_debug, 'color': color_debug, 'amount': amount_debug}
-		debug_df = pd.DataFrame(debug_dic)
-		debug_df.to_csv('./' + 'debug_20200731' + '.csv', encoding='utf_8_sig', index=False) 
+
 		return self.planningReadyQueue

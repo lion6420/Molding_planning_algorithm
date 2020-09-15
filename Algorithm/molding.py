@@ -13,11 +13,12 @@ def myconverter(r):
 
 # 工單
 class Order():
-    def __init__(self, part_number, part_name, tons, plastic_number, color, mold, amount, UPH, start_time, end_time, planning_time, \
+    def __init__(self, part_number, part_name, tons, mold, plastic_number, color, amount, UPH, start_time, end_time, planning_time, \
                  urgent_tag=False):
         self.part_number = part_number
         self.part_name = part_name
         self.tons = tons
+        self.mold = mold
         self.plastic_number = plastic_number
         self.color = color
         self.mold = mold
@@ -31,26 +32,26 @@ class Order():
 
 # 模具
 class Mold():
-	def __init__(self, PN, MJDW, CMDIE_NO, DIE_NO, HOLENUM, STORE_ID, STATUS):
-		self.PN = PN
+    def __init__(self, PN, MJDW, CMDIE_NO, DIE_NO, HOLENUM, STORE_ID, STATUS):
+        self.PN = PN
         self.MJDW = MJDW
-		self.CMDIE_NO = CMDIE_NO
-		self.DIE_NO = DIE_NO
-		self.HOLENUM = HOLENUM
-		self.STORE_ID = STORE_ID
+        self.CMDIE_NO = CMDIE_NO
+        self.DIE_NO = DIE_NO
+        self.HOLENUM = HOLENUM
+        self.STORE_ID = STORE_ID
         self.STATUS = STATUS
 
-	def show_mold_information(self):
-		print('鴻海料號: ', self.PN)
-		print('模號: ', self.CMDIE_NO)
-		print('模序: ', self.DIE_NO)
-		print('Cycle time: ', self.CT)
-		print('UPH: ', self.get_UPH())
-		print('儲位: ', self.STORE_ID)
+    def show_mold_information(self):
+        print('鴻海料號: ', self.PN)
+        print('模號: ', self.CMDIE_NO)
+        print('模序: ', self.DIE_NO)
+        print('Cycle time: ', self.CT)
+        print('UPH: ', self.get_UPH())
+        print('儲位: ', self.STORE_ID)
 
-	def get_UPH(self):
-		UPH = 3600/float(self.CT)*int(self.HOLENUM)
-		return UPH
+    def get_UPH(self):
+        UPH = 3600/float(self.CT)*int(self.HOLENUM)
+        return UPH
 
 
 # 機台
@@ -298,8 +299,8 @@ class Factory():
         )
         cursor = conn.cursor()
 
-        # mysql
-        api = NWE_Molding_MySQL(config_JTtest['host'], config_JTtest['port'], config_JTtest['user'], config_JTtest['password'], config_JTtest['db']) 
+        # # mysql
+        # api = NWE_Molding_MySQL(config_JTtest['host'], config_JTtest['port'], config_JTtest['user'], config_JTtest['password'], config_JTtest['db']) 
         
         for line in self.line_list:
             for m in line.machine_list:
@@ -310,13 +311,13 @@ class Factory():
                         tons = 130
                     else:
                         continue
-                    data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'null', 'null', 'null', 'null', 'null', o.part_name, o.amount, 1, 'null', 'null', 'null', 0, 0, 'null', 4, o.color, 'null')
+                    data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'n', o.mold.DIE_NO, o.mold.CMDIE_NO, o.mold.STORE_ID, 'n', o.part_name, o.amount, 1, 'n', 'n', 'n', 0, 0, o.plastic_number, 4, o.color, 'n')
                     # oracle
                     sql = '''INSERT INTO "arrangement_result" ("machine_NO", "machine_ton", "mold_down_t", "plan_s_time", "plan_e_time", "plan_work_time", "Part_NO", "machine_CT", "UPH", "mold_edit", "mold_Serial", "mold_NO", "mold_position", "package_size", "product_name", "plan_number", "emergency", "mass_pro", "need", "same_mold_part_NO", "value", "total_value", "plastic_Part_NO", "mold_changeover_time", "plastic_color", "note", "Seq") VALUES (:1, :2, TO_DATE(:3,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:4,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:5,'YYYY-MM-DD HH24:MI:SS'), :6, :7, :8, :9, :10, :11, :12, :13, :14, :15, :16, :17, :18, :19, :20, :21, :22, :23, :24, :25, :26, ARRANGEMENT_SEQ.NEXTVAL)'''
                     cursor.execute(sql, data)
                     conn.commit()
-                    # mysql
-                    api.write_planning_result(data)
+                    # # mysql
+                    # api.write_planning_result(data)
         conn.close()
         
         
