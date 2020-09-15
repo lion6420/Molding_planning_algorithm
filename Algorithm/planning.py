@@ -39,6 +39,8 @@ class Planning():
 		if order['機台'] == None or order['結束時間'] == None:
 			if order['機台'] != None: # Special PN binded to specific machine
 				machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
+				if machine_chosen == None:
+					return False
 				if machine_chosen.remaining_time == 0:
 					return False
 			else: # Normal PN
@@ -54,7 +56,7 @@ class Planning():
 											order['產能'], start_time, end_time, time_needed, urgent_tag=self.urgent)
 			machine_chosen.order_list.append(newOrder)
 			# 修改資料庫週數量
-			# api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
+			api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
 		else: # Onworking order
 			machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
 			end_time = order['結束時間']

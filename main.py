@@ -38,6 +38,6 @@ total_weekly_planning = P.main_function()
 
 print('---------------Process succeed--------------')
 # Show and output result
-Factory_NWE.show_line_information()
+# Factory_NWE.show_line_information()
 # Factory_NWE.to_csv('result' + date)
-# Factory_NWE.output_daily_planning()
+Factory_NWE.output_daily_planning()
