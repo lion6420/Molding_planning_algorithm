@@ -9,7 +9,6 @@ from Algorithm.onworking_order import get_onworking_order, get_onworking_order_T
 week = 37
 dateNow_list = datetime.datetime.now().date().strftime('%Y-%m-%d').split('-')
 dateAfter_list = (datetime.datetime.now()+datetime.timedelta(days=1)).date().strftime('%Y-%m-%d').split('-')
-print(timeTomorrow_list)
 
 week_plan_end_day = ['2020', '08', '02']
 

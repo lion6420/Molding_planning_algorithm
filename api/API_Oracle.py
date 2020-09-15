@@ -16,7 +16,6 @@ class NWE_Molding_Oracle(API_Oracle):
   def get_plasticNO(self, PN):
     checkPlastic = self.queryFilterOne('plastic_color_data', {'plastic_part_NO__eq':PN})
     if checkPlastic:
-      print(PN)
       return PN
     else:
       data = self.queryFilterAll('BOM', {'F_ITEM_NUMBER__eq':PN})

@@ -357,5 +357,5 @@ class Error_message():
         pass
     
     def wrong_input_machine_name(self, machine):
-        print('The machine name : ' + machine + ' is wrong. Please ensure to input the whole name. Ex: A01透明')
+        print('The machine name : ' + machine + ' is wrong. Please ensure to input the whole name.')
         return
