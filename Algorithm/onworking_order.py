@@ -39,7 +39,6 @@ def get_onworking_order(order_start_time):
       '生產時間': order[5],
       '起始時間': order[3],
       '結束時間': order[4],
-      '模具數': order[15]/(order[8]*24*7)
     }
   return result
 

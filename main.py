@@ -22,7 +22,7 @@ week_plan_end_time = datetime.datetime.strptime((week_plan_end_day[0] + '-' + we
 path_basic = './basic_information/'
 
 #模型初始化
-onworking_order = get_onworking_order_TEST(order_start_time) # 在機上工單初始化
+onworking_order = get_onworking_order(order_start_time) # 在機上工單初始化
 emergency_order = [] # 急件資料初始化
 prep = preprocessing(path_basic, week, week_plan_end_time, order_start_time, onworking_order) # 週計畫初始化
 weekly_order = prep.get_planning_input() # get週計畫ReadyQueue
