@@ -26,8 +26,9 @@ def get_onworking_order(order_start_time):
   
   onworking_order = api.queryFilterAll('arrangement_result', filterArgs)
   result = [{}]*len(onworking_order)
-  mold = Mold(order[6], order[1], order[11], order[10], None, order[12], True)
+  
   for index, order in enumerate(onworking_order):
+    mold = Mold(order[6], order[1], order[11], order[10], None, order[12], True)
     result[index] = {
       '鴻海料號': order[6],
       '帶版料號': '',
