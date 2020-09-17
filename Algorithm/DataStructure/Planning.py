@@ -27,7 +27,7 @@ class ReadyQueue():
 
     self.orderList.head = dummy.next
 
-  def get_orderAmount(self):
+  def get_orderNumber(self):
     return self.orderList.length
 
   def printElement(self):
