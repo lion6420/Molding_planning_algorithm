@@ -10,7 +10,14 @@ week = 37
 dateNow_list = datetime.datetime.now().date().strftime('%Y-%m-%d').split('-')
 dateAfter_list = (datetime.datetime.now()+datetime.timedelta(days=1)).date().strftime('%Y-%m-%d').split('-')
 
-week_plan_end_day = ['2020', '08', '02']
+# 計算本週剩餘生產日
+week_day = datetime.datetime.now().weekday() + 1
+remained_day = 5 - week_day
+if (remained_day<0):
+  remained_day = 0
+
+# 本週結算時間
+week_plan_end_day = (datetime.datetime.now()+datetime.timedelta(days=remained_day)).date().strftime('%Y-%m-%d').split('-')
 
 # 工單起始、結束時間
 order_start_time = datetime.datetime.strptime((dateNow_list[0] + '-' + dateNow_list[1] + '-' + dateNow_list[2] + ' 19:30:00'), '%Y-%m-%d %H:%M:%S')

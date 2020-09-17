@@ -117,8 +117,8 @@ class Planning():
 		# Calculate time needed
 		time_needed = round((order['總需求'] / order['產能']), 2)
 		# 該工單生產時間計算，if大於三天截斷
-		if time_needed > 72.0:
-			time_needed = 72.0
+		if time_needed > 24.0:
+			time_needed = 24.0
 
 		if len(machine_chosen.order_list) == 0:
 			self.mold_change = False
