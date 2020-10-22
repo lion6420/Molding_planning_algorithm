@@ -1,8 +1,4 @@
-import pandas as pd
-import numpy as np
 from Algorithm.molding import *
-import datetime
-import os
 
 # 多模穴查詢
 planty_mold_chamber_dic = {'700-41438-02WA' : ['700-41439-02WA'], '700-110082-01WC' : ['700-110083-01WC']}

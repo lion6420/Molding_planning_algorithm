@@ -1,16 +1,14 @@
 from utils.Oracle import API_Oracle
 import cx_Oracle
-
-config_oracle = {
-  'host' : '10.132.131.222',
-  'port' : 1521,
-  'user' : 'NWEIAI',
-  'password' : 'NWE123456',
-  'service_name' : 'nweorcl'
-}
+from config.config import config_oracle
 
 class NWE_Molding_Oracle(API_Oracle):
-  def __init__(self, host, port, user, password, service_name):
+  def __init__(self,
+    host=config_oracle['host'],
+    port=config_oracle['port'],
+    user=config_oracle['user'],
+    password=config_oracle['password'],
+    service_name=config_oracle['service_name']):
     super().__init__(host=host, port=port, user=user, password=password, service_name=service_name)
 
   def get_plasticNO(self, PN):
@@ -31,6 +29,34 @@ class NWE_Molding_Oracle(API_Oracle):
     queryPlasticNO(PN)
 
     return self.plasticNO
+
+  def get_onworking_order(self, order_start_time):
+    filterArgs = {
+      'plan_e_time__gt': order_start_time
+    }
+    
+    onworking_order = self.queryFilterAll('arrangement_result', filterArgs)
+    result = [{}]*len(onworking_order)
+    
+    for index, order in enumerate(onworking_order):
+      mold = Mold(order[6], order[1], order[11], order[10], None, order[12], True)
+      result[index] = {
+        '鴻海料號': order[6],
+        '帶版料號': '',
+        '機台': order[0],
+        '品名': order[14],
+        '噸位': order[1],
+        '模具': mold,
+        '塑膠料號': order[22],
+        '顏色': order[24],
+        '總需求': order[15],
+        '產能': order[8],
+        '生產時間': order[5],
+        '起始時間': order[3],
+        '結束時間': order[4],
+        'priority': 0,
+      }
+    return result
 
   def get_weeklyAmount(self, week):
     sql = '''

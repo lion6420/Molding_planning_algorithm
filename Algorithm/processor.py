@@ -6,19 +6,13 @@ from .molding import *
 from factory.NWE import *
 import math
 from .identification import Identification
-from config.config import config_oracle
 from api.API_Oracle import NWE_Molding_Oracle
 
-api_oracle = NWE_Molding_Oracle(
-	config_oracle['host'],
-	config_oracle['port'], 
-	config_oracle['user'], 
-	config_oracle['password'], 
-	config_oracle['service_name'])
+api_oracle = NWE_Molding_Oracle()
 
 Id = Identification()
 
-class Planning():
+class Processor():
 	def __init__(self, onworking_order, emergency, total_weekly_planning, basic_setting):
 		self.onworking_order = onworking_order
 		self.emergency = emergency

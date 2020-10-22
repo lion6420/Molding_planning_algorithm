@@ -1,10 +1,10 @@
-from Algorithm.weekly_order import preprocessing
-import pandas as pd
-import numpy as np
+from Algorithm.preprocessor import preprocessor
 from factory.NWE import *
-from Algorithm.planning import Planning
-from Algorithm.onworking_order import get_onworking_order, get_onworking_order_TEST
+from Algorithm.processor import Processor
+from api.API_Oracle import NWE_Molding_Oracle
+import datetime
 
+api = NWE_Molding_Oracle()
 # 宣告工單起始、結束時間、需求導入時間
 week = 38
 dateNow_list = datetime.datetime.now().date().strftime('%Y-%m-%d').split('-')
@@ -29,9 +29,9 @@ week_plan_end_time = datetime.datetime.strptime((week_plan_end_day[0] + '-' + we
 path_basic = './basic_information/'
 
 #模型初始化
-onworking_order = get_onworking_order(order_start_time) # 在機上工單初始化
+onworking_order = api.get_onworking_order(order_start_time) # 在機上工單初始化
 emergency_order = [] # 急件資料初始化
-prep = preprocessing(path_basic, week, week_plan_end_time, order_start_time, onworking_order) # 週計畫初始化
+prep = preprocessor(path_basic, week, week_plan_end_time, order_start_time) # 週計畫初始化
 weekly_order = prep.get_planning_input() # get週計畫ReadyQueue
 weekly_order.InsertionSort() # 根據priority排序
 
@@ -40,7 +40,7 @@ time_setting = {
   'order_start_time': order_start_time,
   'order_end_time': order_end_time
 }
-P = Planning(onworking_order, emergency_order, weekly_order, time_setting)
+P = Processor(onworking_order, emergency_order, weekly_order, time_setting)
 total_weekly_planning = P.main_function()
 
 print('---------------Process succeed--------------')

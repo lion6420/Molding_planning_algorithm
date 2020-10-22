@@ -1,41 +1,22 @@
 import pandas as pd
 import numpy as np
 import os
-from api.API_MySQL import NWE_Molding_MySQL
 from api.API_Oracle import NWE_Molding_Oracle
-from config.config import config_mysql, config_oracle
 from Algorithm.molding import Mold
 from tqdm import tqdm
 from .DataStructure.Planning import ReadyQueue
 import math
+import datetime
 
 
-class preprocessing():
-	def __init__(self, path_basic, week, week_plan_end_time, order_start_time, onworking_order):
-		self.api_mysql = NWE_Molding_MySQL(
-			config_mysql['host'],
-			config_mysql['port'], 
-			config_mysql['user'], 
-			config_mysql['password'], 
-			config_mysql['db'])
-		self.api_mysql_nwe = NWE_Molding_MySQL(
-			config_mysql['host'],
-			config_mysql['port'], 
-			config_mysql['user'], 
-			config_mysql['password'], 
-			'NWE')
-		self.api_oracle = NWE_Molding_Oracle(
-			config_oracle['host'],
-			config_oracle['port'], 
-			config_oracle['user'], 
-			config_oracle['password'], 
-			config_oracle['service_name']
-		)
+class preprocessor():
+	def __init__(self, path_basic, week, week_plan_end_time, order_start_time):
+		self.api_oracle = NWE_Molding_Oracle()
 		self.basic_df = pd.read_excel(path_basic + 'molding_basic_information.xlsx')
 		self.PN_list, self.weeklyDemand = self.api_oracle.get_weeklyAmount(week=week)
 		self.order_start_time = order_start_time
 		self.week_plan_end_time = week_plan_end_time
-		self.onworking_order = onworking_order
+		self.onworking_order = self.api_oracle.get_onworking_order(order_start_time)
 		self.planningReadyQueue = ReadyQueue()
 	
 
