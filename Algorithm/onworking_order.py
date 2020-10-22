@@ -43,6 +43,7 @@ def get_onworking_order(order_start_time):
       '生產時間': order[5],
       '起始時間': order[3],
       '結束時間': order[4],
+      'priority': 0,
     }
   return result
 

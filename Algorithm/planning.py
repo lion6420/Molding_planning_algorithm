@@ -47,16 +47,20 @@ class Planning():
 				machine_chosen = self.find_fitted_machine(order)
 			if machine_chosen == None: # No machine available for this order
 				return False
+				
 			## Time calculation
 			start_time, end_time, time_needed = self.time_function(order, machine_chosen)
 			if time_needed == None:
 				return False
+
 			## Put into order
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['模具'], order['塑膠料號'], order['顏色'], math.ceil(time_needed*order['產能']), \
 											order['產能'], start_time, end_time, time_needed, urgent_tag=self.urgent)
 			machine_chosen.order_list.append(newOrder)
+
 			# 修改資料庫週數量
 			api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
+
 		else: # Onworking order
 			machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
 			end_time = order['結束時間']
@@ -172,23 +176,6 @@ class Planning():
 		# 1. Yesterday delayed
 		for input in self.onworking_order:
 			if_succeed = self.planning(input)
-
-		# 2. Emergency
-		# Check the part number with same mold
-		for input in self.emergency: # O(m*n) m = number of emergency orders, n = number of machines
-			for line in Factory_NWE.line_list:
-				for m in line.machine_list:
-					if m.order_list == []:
-						continue
-					else:
-						if Id.same_mold(m.order_list[-1].part_number, input['鴻海料號']):
-							if input['鴻海料號'] in self.record_ordered_part_number and input['模具數'] == 1:
-								continue
-							else:
-								self.mold_change = False
-								self.plastic_change = False
-								self.bind_machine = m
-								if_succeed = self.planning(input)
 
 		weekly_order_number = self.total_weekly_planning.get_orderNumber()
 		while(weekly_order_number>0):

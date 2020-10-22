@@ -26,6 +26,16 @@ class API_Oracle():
     self.cursor.close()
     self.conn.close()
 
+  def customQuery(self, sql, queryType='all', filterArgs={}):
+    self.make_connection()
+    self.cursor.execute(sql, filterArgs)
+    if (queryType == 'all'):
+      data = self.cursor.fetchall()
+    elif (queryType == 'one'):
+      data = self.cursor.fetchone()
+    
+    return data
+
   def queryAll(self, table):
     self.make_connection()
     sql = 'SELECT * FROM "' + table + '"'
@@ -34,11 +44,13 @@ class API_Oracle():
     self.disconnection()
     return data
 
-  def queryFilterAll(self, table, filterArgs, cols=[]):
+  def queryFilterAll(self, table, filterArgs, cols=[], returnType='tuple'):
     self.make_connection()
     if (len(cols)>0):
+      result = {}
       sql = 'SELECT '
       for (index,col) in enumerate(cols):
+        result.update({col:[]})
         if (index == len(cols)-1): sql = sql + col + ' FROM "' + table + '" WHERE '
         else: sql = sql + col + ','
     else:
@@ -78,11 +90,28 @@ class API_Oracle():
     self.cursor.execute(sql, input)
     data = self.cursor.fetchall()
     self.disconnection()
-    return data
 
-  def queryFilterOne(self, table, filterArgs):
+    # return dict
+    if (returnType == 'dict'):
+      for row in data:
+        for (row_index, row_ele) in enumerate(row):
+          result[cols[row_index]].append(row_ele)
+      return result
+    # return tuple
+    elif (returnType == 'tuple'):
+      return data
+
+  def queryFilterOne(self, table, filterArgs, cols=[], returnType='tuple'):
     self.make_connection()
-    sql = 'SELECT * FROM "' + table + '" WHERE '
+    if (len(cols)>0):
+      result = {}
+      sql = 'SELECT '
+      for (index,col) in enumerate(cols):
+        result.update({col:[]})
+        if (index == len(cols)-1): sql = sql + col + ' FROM "' + table + '" WHERE '
+        else: sql = sql + col + ','
+    else:
+      sql = 'SELECT * FROM "' + table + '" WHERE '
     count = 0
     input = {}
     for k, v in filterArgs.items():
@@ -118,7 +147,16 @@ class API_Oracle():
     self.cursor.execute(sql, input)
     data = self.cursor.fetchone()
     self.disconnection()
-    return data
+
+    # return dict
+    if (returnType == 'dict'):
+      for row in data:
+        for (row_index, row_ele) in enumerate(row):
+          result[cols[row_index]].append(row_ele)
+      return result
+    # return tuple
+    elif (returnType == 'tuple'):
+      return data
 
   def updateOne(self, table, **kwargs):
     self.make_connection()

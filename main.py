@@ -6,7 +6,7 @@ from Algorithm.planning import Planning
 from Algorithm.onworking_order import get_onworking_order, get_onworking_order_TEST
 
 # 宣告工單起始、結束時間、需求導入時間
-week = 37
+week = 38
 dateNow_list = datetime.datetime.now().date().strftime('%Y-%m-%d').split('-')
 dateAfter_list = (datetime.datetime.now()+datetime.timedelta(days=1)).date().strftime('%Y-%m-%d').split('-')
 
@@ -45,6 +45,6 @@ total_weekly_planning = P.main_function()
 
 print('---------------Process succeed--------------')
 # Show and output result
-# Factory_NWE.show_line_information()
-# Factory_NWE.to_csv('result' + date)
-Factory_NWE.output_daily_planning()
+Factory_NWE.show_line_information()
+Factory_NWE.to_csv('result_' + datetime.datetime.now().date().strftime('%Y-%m-%d'))
+# Factory_NWE.output_daily_planning()

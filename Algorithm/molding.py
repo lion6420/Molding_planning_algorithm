@@ -330,6 +330,8 @@ class Factory():
         start_time_list = []
         end_time_list = []
         part_number_list = []
+        plastic_number_list = []
+        mold_number_list = []
         part_name_list = []
         amount_list = []
         planning_time_list = []
@@ -341,12 +343,14 @@ class Factory():
                     start_time_list.append(o.start_time)
                     end_time_list.append(o.end_time)
                     part_number_list.append(o.part_number)
+                    plastic_number_list.append(o.plastic_number)
+                    mold_number_list.append(o.mold.CMDIE_NO)
                     part_name_list.append(o.part_name)
                     amount_list.append(o.amount)
                     planning_time_list.append(o.planning_time)
         
         result_dic.update({'噸位':tons_list, '機台號':machine_name_list, '起始時間':start_time_list, '結束時間':end_time_list, \
-                           '鴻海料號':part_number_list, '品名':part_name_list, '數量':amount_list, '生產時間':planning_time_list})
+                           '鴻海料號':part_number_list, '塑膠料號':plastic_number_list, '模具': mold_number_list, '品名':part_name_list, '數量':amount_list, '生產時間':planning_time_list})
         result_df = pd.DataFrame(result_dic)
         result_df.to_csv('./' + name + '.csv', encoding='utf_8_sig', index=False)    
 

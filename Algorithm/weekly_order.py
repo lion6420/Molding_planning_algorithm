@@ -5,7 +5,6 @@ from api.API_MySQL import NWE_Molding_MySQL
 from api.API_Oracle import NWE_Molding_Oracle
 from config.config import config_mysql, config_oracle
 from Algorithm.molding import Mold
-from Algorithm.check_stock import check_stock
 from tqdm import tqdm
 from .DataStructure.Planning import ReadyQueue
 import math
@@ -33,23 +32,12 @@ class preprocessing():
 			config_oracle['service_name']
 		)
 		self.basic_df = pd.read_excel(path_basic + 'molding_basic_information.xlsx')
-		self.weeklyDemand = self.api_oracle.queryFilterAll('week_plan', {'week_NO__eq': week})
+		self.PN_list, self.weeklyDemand = self.api_oracle.get_weeklyAmount(week=week)
 		self.order_start_time = order_start_time
 		self.week_plan_end_time = week_plan_end_time
 		self.onworking_order = onworking_order
-		self.base10List = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 		self.planningReadyQueue = ReadyQueue()
 	
-	def if_int(self, str):
-		if str in self.base10List:
-			return True
-		else:
-			return False
-
-	def drop_moldSerial(self, PN):
-		while(PN[-1] != 'E' and self.if_int(PN[-1]) == False):
-			PN = PN[:-1]
-		return PN
 
 	def get_color(self, plastic_number):
 		data = self.api_oracle.queryFilterOne('plastic_color_data', {'plastic_part_NO__eq':plastic_number})
@@ -62,9 +50,7 @@ class preprocessing():
 		machine_binded = self.api_oracle.check_machineBinded(PN)
 		return machine_binded
 
-	def cal_priority(self, moldAmount, urgent_tag, binded, onWork_tag):
-		if onWork_tag == True:
-			return 0
+	def cal_priority(self, moldAmount, urgent_tag, binded):
 		if urgent_tag == True:
 			return 1
 		elif len(binded) > 0:
@@ -79,40 +65,69 @@ class preprocessing():
 			return 6
 
 	def get_mold(self, PN):# 模具資料
-		data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN})
-		if data:
-			keep_best_mold = data[0]
-			for d in data:
-				if int(d[11][1:]) > int(keep_best_mold[11][1:]):
-					keep_best_mold = d
+		cols = ['HH_NO1', 'MJDW', 'CMDIE_NO', 'DIE_NO', 'HOLENUM', 'STORE_ID', 'STATUS']
+		data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN}, cols=cols, returnType='dict')
+		if len(data['HH_NO1']) > 0:
+			best_mold_index = 0
+			for (index,PN) in enumerate(data['HH_NO1']):
+				if int(data['DIE_NO'][index][1:]) > int(data['DIE_NO'][best_mold_index][1:]):
+					best_mold_index = index
 				else:
 					continue
-			mold_data = Mold(PN, keep_best_mold[13], keep_best_mold[8], keep_best_mold[11], keep_best_mold[12], keep_best_mold[30], keep_best_mold[25])
+			mold_data = Mold(
+				PN,
+				data['MJDW'][best_mold_index],
+				data['CMDIE_NO'][best_mold_index],
+				data['DIE_NO'][best_mold_index],
+				data['HOLENUM'][best_mold_index],
+				data['STORE_ID'][best_mold_index], 
+				data['STATUS'][best_mold_index]
+			)
 			return mold_data
-		else:
+		else:# 資料庫找不到模具
 			return None
 
 	def get_planning_input(self):
-		result = []
-		for index, w_d in enumerate(tqdm(self.weeklyDemand, ascii=True)):
-			# 檢查庫存
-			stock_amount = check_stock(w_d[0])
-			if (w_d[4]):
-				amount = w_d[1] - w_d[4] - stock_amount
-			else:
-				amount = w_d[1] - 0 - stock_amount
+		# 已經在機台上料號
+		for onworking_order_index, eachOnworkOrder in enumerate(self.onworking_order):
+			PN = eachOnworkOrder['鴻海料號']
+			PN_withEdit = self.weeklyDemand[PN]['Part_NO']
+			self.weeklyDemand[PN]['planned'] = True
 
-			# 扣減庫剩餘需求
+			# 檢查庫存
+			stock_amount = self.api_oracle.check_stock(PN_withEdit)
+			if (self.weeklyDemand[PN]['real_NO'] > 0): # 扣減本週已產數量、扣減庫存
+				amount = self.weeklyDemand[PN]['plan_number'] - self.weeklyDemand[PN]['real_NO'] - stock_amount
+			else:
+				amount = self.weeklyDemand[PN]['plan_number'] - 0 - stock_amount
+			
+			if amount > 0:
+				eachOnworkOrder['總需求'] = amount
+				eachOnworkOrder['帶版料號'] = PN_withEdit
+				eachOnworkOrder['生產時間'] = None
+				eachOnworkOrder['開始時間'] = None
+				eachOnworkOrder['結束時間'] = None
+				self.planningReadyQueue.enqueue(eachOnworkOrder)
+			else:
+				continue
+
+
+		for PN_index, PN in enumerate(tqdm(self.PN_list, ascii=True)):
+			# 檢查是否排過
+			if (self.weeklyDemand[PN]['planned'] == True):
+				continue
+			
+			PN_withEdit = self.weeklyDemand[PN]['Part_NO']
+			# 檢查庫存
+			stock_amount = self.api_oracle.check_stock(PN_withEdit)
+			if (self.weeklyDemand[PN]['real_NO'] > 0): # 扣減本週已產數量、扣減庫存
+				amount = self.weeklyDemand[PN]['plan_number'] - self.weeklyDemand[PN]['real_NO'] - stock_amount
+			else:
+				amount = self.weeklyDemand[PN]['plan_number'] - 0 - stock_amount
+
 			if amount>0:
-				PN = w_d[0]
-				PN_withoutEdit = self.drop_moldSerial(w_d[0])
-				plastic_number = self.api_oracle.get_plasticNO(PN_withoutEdit) # 找對應塑膠粒
-				# find_name = self.api_oracle.queryFilterOne('MATERIAL', {'ITEM_NO__eq':PN}) # 找品名
-				# if find_name:
-				# 	name = find_name[7]
-				# else:
-				# 	name = None
-				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN_withoutEdit] # 找基本資料(噸位、UPH、品名)
+				plastic_number = self.api_oracle.get_plasticNO(PN) # 找對應塑膠粒
+				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN] # 找基本資料(噸位、UPH、品名)
 				if len(basic_information)>0:
 					tons = basic_information['需求機台'].tolist()[0]
 					UPH = round(basic_information['產能(PCS/H)'].tolist()[0], 2)
@@ -128,45 +143,34 @@ class preprocessing():
 						color = '透明'
 
 					## 計算模具數量
-					dateRemaind = (self.week_plan_end_time - self.order_start_time).days # 計算需要的模具數量(一週七天)
-					if dateRemaind<1:
-						dateRemaind = 1
-					moldAmount = amount/(UPH*24*dateRemaind)
+					dayRemained = (self.week_plan_end_time - self.order_start_time).days # 計算需要的模具數量(一週七天)
+					if dayRemained<1:
+						dayRemained = 1
+					moldAmount = math.ceil(amount/(UPH*24*dayRemained)) # 大於7天的料號拆多台機，最多三台
+					if moldAmount>3:
+						moldAmount = 3
 
 					machine_binded_list = self.check_machineBinded(PN)
-					moldNumber = math.ceil(moldAmount) # 大於7天的料號拆多台機，最多三台
-					if moldNumber>3:
-						moldNumber = 3
-					if len(machine_binded_list)>0 and moldNumber > len(machine_binded_list): # if 有綁定機台，最大機台數量依據綁定機台數量
-						moldNumber = len(machine_binded_list)
-					amount = amount//moldNumber
+					if len(machine_binded_list)>0 and moldAmount > len(machine_binded_list): # if 有綁定機台，最大機台數量依據綁定機台數量
+						moldAmount = len(machine_binded_list)
+
+					amount = amount//moldAmount # 單台機排程數量
 
 					input_machine = None
-					for i in range(moldNumber):
-						mold_chosen = self.get_mold(PN_withoutEdit) # 模具
+					for mold_index in range(moldAmount):
+						mold_chosen = self.get_mold(PN) # 模具
 						if mold_chosen == None: # 如果沒模具可以用
 							break
 
-						onWork_tag = False
 						if len(machine_binded_list)>0:
-							input_machine = machine_binded_list[i]
-						else:
-							# onwork_binded
-							for onworking_order_index, eachOnworkOrder in enumerate(self.onworking_order): # 昨天已排上機的工單，先拉出來綁在同一台上
-								if eachOnworkOrder['鴻海料號'] == PN_withoutEdit:
-									if input_machine == eachOnworkOrder['機台']:
-										continue
-									else:
-										onWork_tag = True
-										input_machine = eachOnworkOrder['機台']
-										del self.onworking_order[onworking_order_index]
-										break
-						priority = self.cal_priority(moldAmount, False, machine_binded_list, onWork_tag) # calc Priority
+							input_machine = machine_binded_list[mold_index]
+
+						priority = self.cal_priority(moldAmount, False, machine_binded_list) # calc Priority
 						
 						# put into queue
 						self.planningReadyQueue.enqueue({
-							'鴻海料號': PN_withoutEdit,
-							'帶版料號': PN,
+							'鴻海料號': PN,
+							'帶版料號': PN_withEdit,
 							'機台': input_machine,
 							'品名': name,
 							'噸位': tons,
@@ -178,7 +182,6 @@ class preprocessing():
 							'生產時間': None,
 							'起始時間': None,
 							'結束時間': None,
-							'模具數': moldAmount,
 							'priority': priority
 						})
 				else:

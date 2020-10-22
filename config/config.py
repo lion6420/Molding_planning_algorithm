@@ -23,7 +23,7 @@ config_JTtest = {
   'db' : 'planning_test'}
 
 config_oracle = {
-  'host' : '10.132.131.222',
+  'host' : '10.149.1.218',
   'port' : 1521,
   'user' : 'NWEIAI',
   'password' : 'NWE123456',
