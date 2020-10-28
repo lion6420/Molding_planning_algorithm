@@ -332,9 +332,19 @@ class Factory():
                         tons = 1050
                     else:
                         continue
-                    data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'n', o.mold.DIE_NO, o.mold.CMDIE_NO, o.mold.STORE_ID, 'n', o.part_name, o.amount, 1, 'n', 'n', 'n', 0, 0, o.plastic_number, 4, o.color, 'n')
+                    data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'n', o.mold.DIE_NO, o.mold.CMDIE_NO, o.mold.STORE_ID, 'n', o.part_name, o.amount, 1, 'n', 'n', 'n', 0, 0, o.plastic_number, 4, o.color, 'n', o.VER)
                     # oracle
-                    sql = '''INSERT INTO "arrangement_result" ("machine_NO", "machine_ton", "mold_down_t", "plan_s_time", "plan_e_time", "plan_work_time", "Part_NO", "machine_CT", "UPH", "mold_edit", "mold_Serial", "mold_NO", "mold_position", "package_size", "product_name", "plan_number", "emergency", "mass_pro", "need", "same_mold_part_NO", "value", "total_value", "plastic_Part_NO", "mold_changeover_time", "plastic_color", "note", "Seq") VALUES (:1, :2, TO_DATE(:3,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:4,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:5,'YYYY-MM-DD HH24:MI:SS'), :6, :7, :8, :9, :10, :11, :12, :13, :14, :15, :16, :17, :18, :19, :20, :21, :22, :23, :24, :25, :26, ARRANGEMENT_SEQ.NEXTVAL)'''
+                    sql = '''
+                            INSERT INTO "arrangement_result"
+                            ("machine_NO", "machine_ton", "mold_down_t", "plan_s_time", "plan_e_time", "plan_work_time",
+                             "Part_NO", "machine_CT", "UPH", "mold_edit", "mold_Serial", "mold_NO", "mold_position", "package_size",
+                             "product_name", "plan_number", "emergency", "mass_pro", "need", "same_mold_part_NO", "value", "total_value",
+                             "plastic_Part_NO", "mold_changeover_time", "plastic_color", "note", "Seq", "VER")
+                            VALUES
+                            (:1, :2, TO_DATE(:3,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:4,'YYYY-MM-DD HH24:MI:SS'), TO_DATE(:5,'YYYY-MM-DD HH24:MI:SS'),
+                             :6, :7, :8, :9, :10, :11, :12, :13, :14, :15, :16, :17, :18, :19, :20, :21, :22, :23, :24, :25, :26,
+                             ARRANGEMENT_SEQ.NEXTVAL, :27)
+                           '''
                     cursor.execute(sql, data)
                     conn.commit()
                     # # mysql
