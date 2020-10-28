@@ -37,12 +37,17 @@ class NWE_Molding_Oracle(API_Oracle):
     
     onworking_order = self.queryFilterAll('arrangement_result', filterArgs)
     result = [{}]*len(onworking_order)
+
+    # 已在使用模具
+    onWorkMold = {}
     
     for index, order in enumerate(onworking_order):
       mold = Mold(order[6], order[1], order[11], order[10], None, order[12], True)
+      onWorkMold.update({mold.CMDIE_NO: True})
       result[index] = {
         '鴻海料號': order[6],
         '帶版料號': '',
+        '版次': '',
         '機台': order[0],
         '品名': order[14],
         '噸位': order[1],
@@ -56,7 +61,7 @@ class NWE_Molding_Oracle(API_Oracle):
         '結束時間': order[4],
         'priority': 0,
       }
-    return result
+    return onWorkMold, result
 
   def get_weeklyAmount(self, week):
     sql = '''
@@ -69,22 +74,8 @@ class NWE_Molding_Oracle(API_Oracle):
     result = {}
     PN_list = []
     def drop_moldSerial(PN):
-      if (len(PN.split('-')) == 3 or len(PN.split('.')) == 3): # Ex: 700-124961-01、440.00553.005
-        while(PN[-1].isnumeric() == False):
-          PN = PN[:-1]
-        return PN
-      else: # Ex: 1B51HEE00-01E
-        count = 0
-        while(PN[-1] != 'E' and (PN[-1].isnumeric() == False or (PN[-1].isnumeric() == True and count == 0))):
-          PN = PN[:-1]
-          count = count + 1
-        if PN[-2].isnumeric(): # Ex: 1B51KCY00-02E
-          return PN
-        else:
-          while(PN[-2] != 'E'):
-            PN = PN[:-1]
-          PN = PN[:-1]
-        return PN
+      result = PN.split('W')[0]
+      return result
 
     for row in data:
       temp_dict = {

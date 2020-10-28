@@ -96,6 +96,29 @@ E04 = Machine('E04', '130T',  'others', 1, [], 24.0)
 E05 = Machine('E05', '130T',  'others', 1, [], 24.0)
 E = Line('E', 5, 5, 0, [E01, E02, E03, E04, E05])
 
+# F線
+F01 = Machine('F01', '350T',  'white',  1, [], 24.0)
+F02 = Machine('F02', '350T',  'trans',  1, [], 24.0)
+F03 = Machine('F03', '350T',  'white',  1, [], 24.0)
+F04 = Machine('F04', '350T',  'white', 1, [], 24.0)
+F05 = Machine('F05', '350T',  'white',  1, [], 24.0)
+F06 = Machine('F06', '350T',  'white',  1, [], 24.0)
+F07 = Machine('F07', '350T',  'white',  1, [], 24.0)
+F08 = Machine('F08', '350T',  'white', 1, [], 24.0)
+F09 = Machine('F09', '200T',  'others', 1, [], 24.0)
+F10 = Machine('F10', '250T',  'others', 1, [], 24.0)
+F11 = Machine('F11', '250T',  'white',  1, [], 24.0)
+F12 = Machine('F12', '250T',  'white', 1, [], 24.0)
+F13 = Machine('F13', '250T',  'white',  1, [], 24.0)
+F14 = Machine('F14', '250T',  'white',  1, [], 24.0)
+F15 = Machine('F15', '250T',  'white',  1, [], 24.0)
+F16 = Machine('F16', '650T',  'white', 1, [], 24.0)
+F17 = Machine('F17', '1050T',  'white',  1, [], 24.0)
+F = Line('F', 17, 17, 0, [F01, F02, F03, F04, F05,\
+                          F06, F07, F08, F09, F10,\
+                          F11, F12, F13, F14, F15,\
+                          F16, F17])
+
 # G線
 G01 = Machine('G01', '100T',  'others', 1, [], 24.0)
 G02 = Machine('G02', '100T',  'trans',  1, [], 24.0)
@@ -108,4 +131,4 @@ G08 = Machine('G08', '100T',  'others', 1, [], 24.0)
 G = Line('G', 8, 8, 0, [G01, G02, G03, G04, G05, G06, G07, G08])
 
 # D9、D10廠
-Factory_NWE = Factory('NWE_molding', [A, B, C, D, E, G])
+Factory_NWE = Factory('NWE_molding', [A, B, C, D, E, F, G])

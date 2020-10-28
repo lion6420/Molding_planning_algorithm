@@ -16,7 +16,7 @@ class preprocessor():
 		self.PN_list, self.weeklyDemand = self.api_oracle.get_weeklyAmount(week=week)
 		self.order_start_time = order_start_time
 		self.week_plan_end_time = week_plan_end_time
-		self.onworking_order = self.api_oracle.get_onworking_order(order_start_time)
+		self.onworking_mold, self.onworking_order = self.api_oracle.get_onworking_order(order_start_time)
 		self.planningReadyQueue = ReadyQueue()
 	
 
@@ -45,27 +45,38 @@ class preprocessor():
 		else:
 			return 6
 
+	def getEditNumber(self, PN):
+		editNumber = PN.split('W')[1]
+		return editNumber
+
 	def get_mold(self, PN):# 模具資料
 		cols = ['HH_NO1', 'MJDW', 'CMDIE_NO', 'DIE_NO', 'HOLENUM', 'STORE_ID', 'STATUS']
 		data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN}, cols=cols, returnType='dict')
 		if len(data['HH_NO1']) > 0:
-			best_mold_index = 0
+			best_mold_index = None
 			for (index,PN) in enumerate(data['HH_NO1']):
-				if int(data['DIE_NO'][index][1:]) > int(data['DIE_NO'][best_mold_index][1:]):
+				if data['CMDIE_NO'][index] in self.onworking_mold:
+					continue
+				elif best_mold_index == None:
+					best_mold_index = index
+				elif int(data['DIE_NO'][index][1:]) > int(data['DIE_NO'][best_mold_index][1:]):
 					best_mold_index = index
 				else:
 					continue
-			mold_data = Mold(
-				PN,
-				data['MJDW'][best_mold_index],
-				data['CMDIE_NO'][best_mold_index],
-				data['DIE_NO'][best_mold_index],
-				data['HOLENUM'][best_mold_index],
-				data['STORE_ID'][best_mold_index], 
-				data['STATUS'][best_mold_index]
-			)
-			return mold_data
-		else:# 資料庫找不到模具
+			if best_mold_index != None:
+				mold_data = Mold(
+					PN,
+					data['MJDW'][best_mold_index],
+					data['CMDIE_NO'][best_mold_index],
+					data['DIE_NO'][best_mold_index],
+					data['HOLENUM'][best_mold_index],
+					data['STORE_ID'][best_mold_index], 
+					data['STATUS'][best_mold_index]
+				)
+				return mold_data
+			else: # 找不到可用模具
+				return None
+		else: # 資料庫找不到模具
 			return None
 
 	def get_planning_input(self):
@@ -99,6 +110,8 @@ class preprocessor():
 				continue
 			
 			PN_withEdit = self.weeklyDemand[PN]['Part_NO']
+			# 版次
+			editNumber = self.getEditNumber(PN_withEdit)
 			# 檢查庫存
 			stock_amount = self.api_oracle.check_stock(PN_withEdit)
 			if (self.weeklyDemand[PN]['real_NO'] > 0): # 扣減本週已產數量、扣減庫存
@@ -148,10 +161,13 @@ class preprocessor():
 
 						priority = self.cal_priority(moldAmount, False, machine_binded_list) # calc Priority
 						
+						# update onworking mold
+						self.onworking_mold.update({mold_chosen.CMDIE_NO: True})
 						# put into queue
 						self.planningReadyQueue.enqueue({
 							'鴻海料號': PN,
 							'帶版料號': PN_withEdit,
+							'版次': editNumber,
 							'機台': input_machine,
 							'品名': name,
 							'噸位': tons,
