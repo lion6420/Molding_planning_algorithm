@@ -14,7 +14,7 @@ def myconverter(r):
 # 工單
 class Order():
     def __init__(self, part_number, part_name, tons, mold, plastic_number, color, amount, UPH, start_time, end_time, planning_time, \
-                 urgent_tag=False):
+                 VER, urgent_tag=False):
         self.part_number = part_number
         self.part_name = part_name
         self.tons = tons
@@ -28,6 +28,7 @@ class Order():
         self.end_time = end_time
         self.planning_time = planning_time
         self.urgent_tag = urgent_tag
+        self.VER = VER
 
 
 # 模具
@@ -307,8 +308,28 @@ class Factory():
                 for o in m.order_list:
                     if o.tons == '100T':
                         tons = 100
+                    elif o.tons == '50T':
+                        tons = 50
+                    elif o.tons == '90T':
+                        tons = 90
+                    elif o.tons == '120T':
+                        tons = 120
                     elif o.tons == '130T':
                         tons = 130
+                    elif o.tons == '180T':
+                        tons = 180
+                    elif o.tons == '200T':
+                        tons = 200
+                    elif o.tons == '250T':
+                        tons = 250
+                    elif o.tons == '350T':
+                        tons = 350
+                    elif o.tons == '450T':
+                        tons = 450
+                    elif o.tons == '650T':
+                        tons = 650
+                    elif o.tons == '1050T':
+                        tons = 1050
                     else:
                         continue
                     data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'n', o.mold.DIE_NO, o.mold.CMDIE_NO, o.mold.STORE_ID, 'n', o.part_name, o.amount, 1, 'n', 'n', 'n', 0, 0, o.plastic_number, 4, o.color, 'n')

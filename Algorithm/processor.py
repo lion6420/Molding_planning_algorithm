@@ -49,7 +49,7 @@ class Processor():
 
 			## Put into order
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['模具'], order['塑膠料號'], order['顏色'], math.ceil(time_needed*order['產能']), \
-											order['產能'], start_time, end_time, time_needed, urgent_tag=self.urgent)
+											order['產能'], start_time, end_time, time_needed, order['版次'], urgent_tag=self.urgent)
 			machine_chosen.order_list.append(newOrder)
 
 			# 修改資料庫週數量
@@ -59,7 +59,7 @@ class Processor():
 			machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
 			end_time = order['結束時間']
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['模具'], order['塑膠料號'], order['顏色'], order['總需求'], \
-										   order['產能'], order['起始時間'], order['結束時間'], order['生產時間'], urgent_tag=self.urgent)
+										   order['產能'], order['起始時間'], order['結束時間'], order['生產時間'], order['版次'], urgent_tag=self.urgent)
 			machine_chosen.order_list.append(newOrder)
 
 		#機台剩餘時間扣減	

@@ -7,6 +7,7 @@ import datetime
 api = NWE_Molding_Oracle()
 # 宣告工單起始、結束時間、需求導入時間
 week = datetime.datetime.now().isocalendar()[1]
+# week = 38
 dateNow_list = datetime.datetime.now().date().strftime('%Y-%m-%d').split('-')
 dateAfter_list = (datetime.datetime.now()+datetime.timedelta(days=1)).date().strftime('%Y-%m-%d').split('-')
 

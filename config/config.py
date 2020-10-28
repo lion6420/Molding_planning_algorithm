@@ -2,7 +2,7 @@ import cx_Oracle
 
 #Oracle dsn_tns
 dsn_tns = cx_Oracle.makedsn(
-    '10.132.131.222',
+    '10.149.1.218',
     '1521',
     service_name = 'nweorcl'
 )
