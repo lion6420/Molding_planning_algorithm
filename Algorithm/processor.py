@@ -43,13 +43,13 @@ class Processor():
 				return False
 				
 			## Time calculation
-			start_time, end_time, time_needed = self.time_function(order, machine_chosen)
+			mold_down_t, start_time, end_time, time_needed = self.time_function(order, machine_chosen)
 			if time_needed == None:
 				return False
 
 			## Put into order
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['模具'], order['塑膠料號'], order['顏色'], math.ceil(time_needed*order['產能']), \
-											order['產能'], start_time, end_time, time_needed, order['版次'], urgent_tag=self.urgent)
+											order['產能'], mold_down_t, start_time, end_time, time_needed, order['版次'], urgent_tag=self.urgent)
 			machine_chosen.order_list.append(newOrder)
 
 			# 修改資料庫週數量
@@ -59,7 +59,7 @@ class Processor():
 			machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
 			end_time = order['結束時間']
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['模具'], order['塑膠料號'], order['顏色'], order['總需求'], \
-										   order['產能'], order['起始時間'], order['結束時間'], order['生產時間'], order['版次'], urgent_tag=self.urgent)
+										   order['產能'], order['換模時間'], order['起始時間'], order['結束時間'], order['生產時間'], order['版次'], urgent_tag=self.urgent)
 			machine_chosen.order_list.append(newOrder)
 
 		#機台剩餘時間扣減	
@@ -126,20 +126,20 @@ class Processor():
 		# Calculate start time, end time
 		# if it is no need mold changing
 		if self.mold_change == False:
-			start_time, end_time, time_needed = self.time_calculation(False, time_needed, machine_chosen)
+			mold_down_t, start_time, end_time, time_needed = self.time_calculation(False, time_needed, machine_chosen)
 
 			# if mold changing is required, another 4 hours is needed
 		else:
-			start_time, end_time, time_needed = self.time_calculation(True, time_needed, machine_chosen)
+			mold_down_t, start_time, end_time, time_needed = self.time_calculation(True, time_needed, machine_chosen)
 		
 		if time_needed == None:
-			return None, None, None
+			return None, None, None, None
 		
-		return start_time, end_time, time_needed
+		return mold_down_t, start_time, end_time, time_needed
 
 	def time_calculation(self, if_moldChange, time_needed, machine_chosen):
 		if if_moldChange == True:
-			# 起始、結束時間計算
+			# 換模、起始、結束時間計算
 			hour_needed = int(str(time_needed).split('.')[0])
 			minute_needed = (int(str(time_needed).split('.')[1])/100)*60
 			if machine_chosen.order_list:
@@ -147,7 +147,8 @@ class Processor():
 			else:
 				start_time = self.basic_setting['order_start_time'] + datetime.timedelta(hours=4)
 			end_time = start_time + datetime.timedelta(hours=hour_needed, minutes=minute_needed)
-			return start_time, end_time, time_needed
+			mold_down_t = start_time - datetime.timedelta(hours=2)
+			return mold_down_t, start_time, end_time, time_needed
 		else:
 			# 起始、結束時間計算
 			hour_needed = int(str(time_needed).split('.')[0])
@@ -157,7 +158,8 @@ class Processor():
 			else:
 				start_time = self.basic_setting['order_start_time']
 			end_time = start_time + datetime.timedelta(hours=hour_needed, minutes=minute_needed)
-			return start_time, end_time, time_needed
+			mold_down_t = start_time - datetime.timedelta(hours=2)
+			return mold_down_t, start_time, end_time, time_needed
 
 	def machine_remaining_time_calculation(self, machine_chosen, end_time):
 		delta_time = (self.basic_setting['order_end_time'] - end_time)

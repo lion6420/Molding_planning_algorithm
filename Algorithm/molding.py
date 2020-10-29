@@ -13,7 +13,7 @@ def myconverter(r):
 
 # 工單
 class Order():
-    def __init__(self, part_number, part_name, tons, mold, plastic_number, color, amount, UPH, start_time, end_time, planning_time, \
+    def __init__(self, part_number, part_name, tons, mold, plastic_number, color, amount, UPH, mold_down_t,start_time, end_time, planning_time, \
                  VER, urgent_tag=False):
         self.part_number = part_number
         self.part_name = part_name
@@ -24,6 +24,7 @@ class Order():
         self.mold = mold
         self.amount = amount
         self.UPH = UPH
+        self.mold_down_t = mold_down_t
         self.start_time = start_time
         self.end_time = end_time
         self.planning_time = planning_time
@@ -358,6 +359,7 @@ class Factory():
         result_dic = {}
         tons_list = []
         machine_name_list = []
+        mold_down_t_list = []
         start_time_list = []
         end_time_list = []
         part_number_list = []
@@ -371,6 +373,7 @@ class Factory():
                 for o in m.order_list:
                     tons_list.append(m.tons)
                     machine_name_list.append(m.name)
+                    mold_down_t_list.append(o.mold_down_t)
                     start_time_list.append(o.start_time)
                     end_time_list.append(o.end_time)
                     part_number_list.append(o.part_number)
@@ -380,7 +383,7 @@ class Factory():
                     amount_list.append(o.amount)
                     planning_time_list.append(o.planning_time)
         
-        result_dic.update({'噸位':tons_list, '機台號':machine_name_list, '起始時間':start_time_list, '結束時間':end_time_list, \
+        result_dic.update({'噸位':tons_list, '機台號':machine_name_list, '換模時間': mold_down_t_list, '起始時間':start_time_list, '結束時間':end_time_list, \
                            '鴻海料號':part_number_list, '塑膠料號':plastic_number_list, '模具': mold_number_list, '品名':part_name_list, '數量':amount_list, '生產時間':planning_time_list})
         result_df = pd.DataFrame(result_dic)
         result_df.to_csv('./' + name + '.csv', encoding='utf_8_sig', index=False)    

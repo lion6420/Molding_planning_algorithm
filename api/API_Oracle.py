@@ -1,6 +1,7 @@
 from utils.Oracle import API_Oracle
 import cx_Oracle
 from config.config import config_oracle
+from Algorithm.molding import Mold
 
 class NWE_Molding_Oracle(API_Oracle):
   def __init__(self,
@@ -12,53 +13,73 @@ class NWE_Molding_Oracle(API_Oracle):
     super().__init__(host=host, port=port, user=user, password=password, service_name=service_name)
 
   def get_plasticNO(self, PN):
-    self.plasticNO = None
-    def queryPlasticNO(PN):
-      if self.plasticNO != None:
-        return
-      checkPlastic = self.queryFilterOne('plastic_color_data', {'plastic_part_NO__eq':PN})
-      if checkPlastic:
-        self.plasticNO = checkPlastic[0]
-        return
-      else:
-        data = self.queryFilterAll('BOM', {'F_ITEM_NUMBER__eq':PN})
-        if (len(data) == 0):
-          return
-        for d in data:
-          queryPlasticNO(d[2])
-    queryPlasticNO(PN)
-
-    return self.plasticNO
+    filterArgs = {
+      'PN': PN
+    }
+    sql = '''
+      SELECT ITEM_NUMBER
+      FROM BOM
+      WHERE EXISTS (
+        SELECT 1
+        FROM "plastic_color_data"
+        WHERE "plastic_part_NO" = BOM.ITEM_NUMBER
+      )
+      START WITH BOM.F_ITEM_NUMBER = :PN
+      CONNECT BY PRIOR BOM.ITEM_NUMBER = BOM.F_ITEM_NUMBER
+    '''
+    plasticNO = self.customQuery(sql, queryType='one', filterArgs=filterArgs)
+    if (plasticNO == None):
+      return None
+    return plasticNO[0]
 
   def get_onworking_order(self, order_start_time):
     filterArgs = {
-      'plan_e_time__gt': order_start_time
+      'time': order_start_time
     }
-    
-    onworking_order = self.queryFilterAll('arrangement_result', filterArgs)
-    result = [{}]*len(onworking_order)
+    cols = ['"machine_NO"', '"machine_ton"', '"mold_down_t"', '"plan_s_time"', '"plan_e_time"', '"plan_work_time"', '"Part_NO"', '"machine_CT"',\
+            'UPH', '"mold_edit"', '"mold_Serial"', '"mold_NO"', '"mold_position"', '"package_size"', '"product_name"', '"plan_number"',\
+            '"emergency"', '"mass_pro"', '"need"', '"same_mold_part_NO"', '"value"', '"total_value"', '"plastic_Part_NO"', '"mold_changeover_time"',\
+            '"plastic_color"', '"note"', '"Seq"', '"timestamp"', '"has_been_open_work_list"', 'VER', 'HOLENUM']
+    sql = '''
+      SELECT "arrangement_result".*, MJ_DATA.HOLENUM
+      FROM "arrangement_result"
+      LEFT JOIN MJ_DATA
+      ON "mold_NO" = CMDIE_NO AND "mold_Serial" = DIE_NO
+      WHERE "plan_e_time" > :time
+    '''
+    onworking_order = self.customQuery(sql, filterArgs=filterArgs, cols=cols, returnType='dict')
+    result = [{}]*len(onworking_order['"Seq"'])
 
     # 已在使用模具
     onWorkMold = {}
     
-    for index, order in enumerate(onworking_order):
-      mold = Mold(order[6], order[1], order[11], order[10], None, order[12], True)
-      onWorkMold.update({mold.CMDIE_NO: True})
+    for index, sequence in enumerate(onworking_order['"Seq"']):
+      mold = Mold(
+        onworking_order['"Part_NO"'][index],
+        onworking_order['"machine_ton"'][index],
+        onworking_order['"mold_NO"'][index],
+        onworking_order['"mold_Serial"'][index],
+        onworking_order['HOLENUM'][index],
+        onworking_order['"mold_position"'][index],
+        True
+      )
+      onWorkMold.update({mold.CMDIE_NO: True}) # 紀錄已在使用的模具
       result[index] = {
-        '鴻海料號': order[6],
-        '帶版料號': '',
-        '版次': '',
-        '機台': order[0],
-        '品名': order[14],
-        '噸位': order[1],
+        '鴻海料號': onworking_order['"Part_NO"'][index],
+        '帶版料號': onworking_order['"Part_NO"'][index] + 'W' + onworking_order['VER'][index],
+        '版次': onworking_order['VER'][index],
+        '機台': onworking_order['"machine_NO"'][index],
+        '品名': onworking_order['"product_name"'][index],
+        '噸位': onworking_order['"machine_ton"'][index],
         '模具': mold,
-        '塑膠料號': order[22],
-        '顏色': order[24],
-        '總需求': order[15],
-        '產能': order[8],
-        '生產時間': order[5],
-        '起始時間': order[3],
-        '結束時間': order[4],
+        '塑膠料號': onworking_order['"plastic_Part_NO"'][index],
+        '顏色': onworking_order['"plastic_color"'][index],
+        '總需求': onworking_order['"plan_number"'][index],
+        '產能': onworking_order['UPH'][index],
+        '生產時間': onworking_order['"plan_work_time"'][index],
+        '換模時間': onworking_order['"mold_down_t"'][index],
+        '起始時間': onworking_order['"plan_s_time"'][index],
+        '結束時間': onworking_order['"plan_e_time"'][index],
         'priority': 0,
       }
     return onWorkMold, result
@@ -74,8 +95,9 @@ class NWE_Molding_Oracle(API_Oracle):
     result = {}
     PN_list = []
     def drop_moldSerial(PN):
-      result = PN.split('W')[0]
-      return result
+      while(PN[-1] != 'W'):
+        PN = PN[0:-1]
+      return PN[0:-1]
 
     for row in data:
       temp_dict = {

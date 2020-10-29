@@ -26,15 +26,29 @@ class API_Oracle():
     self.cursor.close()
     self.conn.close()
 
-  def customQuery(self, sql, queryType='all', filterArgs={}):
+  def customQuery(self, sql, queryType='all', filterArgs={}, cols=[], returnType='tuple'):
     self.make_connection()
-    self.cursor.execute(sql, filterArgs)
+    if (filterArgs):
+      self.cursor.execute(sql, filterArgs)
+    else:
+      self.cursor.execute(sql)
     if (queryType == 'all'):
       data = self.cursor.fetchall()
     elif (queryType == 'one'):
       data = self.cursor.fetchone()
     
-    return data
+    # return dict
+    if (returnType == 'dict'):
+      result = {}
+      for row_index, row in enumerate(data):
+        for ele_index, row_ele in enumerate(row):
+          if (row_index == 0): # 回傳字典新增
+            result.update({cols[ele_index]: []})
+          result[cols[ele_index]].append(row_ele)
+      return result
+    # return tuple
+    elif (returnType == 'tuple'):
+      return data
 
   def queryAll(self, table):
     self.make_connection()

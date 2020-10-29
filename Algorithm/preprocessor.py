@@ -46,7 +46,7 @@ class preprocessor():
 			return 6
 
 	def getEditNumber(self, PN):
-		editNumber = PN.split('W')[1]
+		editNumber = PN.split('W')[-1]
 		return editNumber
 
 	def get_mold(self, PN):# 模具資料
@@ -83,6 +83,8 @@ class preprocessor():
 		# 已經在機台上料號
 		for onworking_order_index, eachOnworkOrder in enumerate(self.onworking_order):
 			PN = eachOnworkOrder['鴻海料號']
+			if (PN not in self.weeklyDemand):
+				continue
 			PN_withEdit = self.weeklyDemand[PN]['Part_NO']
 			self.weeklyDemand[PN]['planned'] = True
 
@@ -97,6 +99,7 @@ class preprocessor():
 				eachOnworkOrder['總需求'] = amount
 				eachOnworkOrder['帶版料號'] = PN_withEdit
 				eachOnworkOrder['生產時間'] = None
+				eachOnworkOrder['換模時間'] = None
 				eachOnworkOrder['開始時間'] = None
 				eachOnworkOrder['結束時間'] = None
 				self.planningReadyQueue.enqueue(eachOnworkOrder)
@@ -108,7 +111,6 @@ class preprocessor():
 			# 檢查是否排過
 			if (self.weeklyDemand[PN]['planned'] == True):
 				continue
-			
 			PN_withEdit = self.weeklyDemand[PN]['Part_NO']
 			# 版次
 			editNumber = self.getEditNumber(PN_withEdit)
@@ -177,6 +179,7 @@ class preprocessor():
 							'總需求': amount,
 							'產能': UPH,
 							'生產時間': None,
+							'換模時間': None,
 							'起始時間': None,
 							'結束時間': None,
 							'priority': priority
