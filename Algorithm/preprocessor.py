@@ -10,10 +10,10 @@ import datetime
 
 
 class preprocessor():
-	def __init__(self, path_basic, week, week_plan_end_time, order_start_time):
+	def __init__(self, path_basic, week_plan_end_time, order_start_time):
 		self.api_oracle = NWE_Molding_Oracle()
 		self.basic_df = pd.read_excel(path_basic + 'molding_basic_information.xlsx')
-		self.PN_list, self.weeklyDemand = self.api_oracle.get_weeklyAmount(week=week)
+		self.PN_list, self.weeklyDemand = self.api_oracle.get_weeklyAmount()
 		self.order_start_time = order_start_time
 		self.week_plan_end_time = week_plan_end_time
 		self.onworking_mold, self.onworking_order = self.api_oracle.get_onworking_order(order_start_time)
@@ -31,10 +31,10 @@ class preprocessor():
 		machine_binded = self.api_oracle.check_machineBinded(PN)
 		return machine_binded
 
-	def cal_priority(self, moldAmount, urgent_tag, binded):
+	def cal_priority(self, moldAmount, urgent_tag, binded_machine):
 		if urgent_tag == True:
 			return 1
-		elif len(binded) > 0:
+		elif binded_machine:
 			return 2
 		elif moldAmount > 1:
 			return 3
@@ -51,27 +51,27 @@ class preprocessor():
 
 	def get_mold(self, PN):# 模具資料
 		cols = ['HH_NO1', 'MJDW', 'CMDIE_NO', 'DIE_NO', 'HOLENUM', 'STORE_ID', 'STATUS']
-		data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN}, cols=cols, returnType='dict')
-		if len(data['HH_NO1']) > 0:
+		data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN, 'STATUS__eq':'正常入庫'}, cols=cols, returnType='frame')
+		if data.height > 0:
 			best_mold_index = None
-			for (index,PN) in enumerate(data['HH_NO1']):
-				if data['CMDIE_NO'][index] in self.onworking_mold:
+			for index in range(data.height):
+				if data[index]['CMDIE_NO'] in self.onworking_mold:
 					continue
 				elif best_mold_index == None:
 					best_mold_index = index
-				elif int(data['DIE_NO'][index][1:]) > int(data['DIE_NO'][best_mold_index][1:]):
+				elif int(data[index]['DIE_NO'][1:]) > int(data[best_mold_index]['DIE_NO'][1:]):
 					best_mold_index = index
 				else:
 					continue
 			if best_mold_index != None:
 				mold_data = Mold(
 					PN,
-					data['MJDW'][best_mold_index],
-					data['CMDIE_NO'][best_mold_index],
-					data['DIE_NO'][best_mold_index],
-					data['HOLENUM'][best_mold_index],
-					data['STORE_ID'][best_mold_index], 
-					data['STATUS'][best_mold_index]
+					data[best_mold_index]['MJDW'],
+					data[best_mold_index]['CMDIE_NO'],
+					data[best_mold_index]['DIE_NO'],
+					data[best_mold_index]['HOLENUM'],
+					data[best_mold_index]['STORE_ID'], 
+					data[best_mold_index]['STATUS']
 				)
 				return mold_data
 			else: # 找不到可用模具
@@ -122,7 +122,12 @@ class preprocessor():
 				amount = self.weeklyDemand[PN]['plan_number'] - 0 - stock_amount
 
 			if amount>0:
-				plastic_number = self.api_oracle.get_plasticNO(PN) # 找對應塑膠粒
+				historyLog = self.api_oracle.getHistory(PN) # 歷史生產紀錄
+				if historyLog.height>0:
+					plastic_number = historyLog[0]['plastic_Part_NO'] # 找對應塑膠粒
+				else:
+					plastic_number = self.api_oracle.get_plasticNO(PN) # 找對應塑膠粒
+
 				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN] # 找基本資料(噸位、UPH、品名)
 				if len(basic_information)>0:
 					tons = basic_information['需求機台'].tolist()[0]
@@ -154,14 +159,30 @@ class preprocessor():
 
 					input_machine = None
 					for mold_index in range(moldAmount):
-						mold_chosen = self.get_mold(PN) # 模具
+						# 模具
+						if historyLog.height > mold_index:
+							print(historyLog[mold_index]['mold_NO'])
+							mold_chosen = Mold(
+								PN,
+								historyLog[mold_index]['MJDW'],
+								historyLog[mold_index]['mold_NO'],
+								historyLog[mold_index]['mold_Serial'],
+								historyLog[mold_index]['mold_hole'],
+								historyLog[mold_index]['mold_position'],
+								historyLog[mold_index]['STATUS']
+							)
+						else:
+							mold_chosen = self.get_mold(PN) # 模具
 						if mold_chosen == None: # 如果沒模具可以用
 							break
 
-						if len(machine_binded_list)>0:
+						# 機台綁定
+						if historyLog.height > mold_index:
+							input_machine = historyLog[mold_index]['machine_NO']
+						elif len(machine_binded_list)>0:
 							input_machine = machine_binded_list[mold_index]
 
-						priority = self.cal_priority(moldAmount, False, machine_binded_list) # calc Priority
+						priority = self.cal_priority(moldAmount, False, input_machine) # calc Priority
 						
 						# update onworking mold
 						self.onworking_mold.update({mold_chosen.CMDIE_NO: True})

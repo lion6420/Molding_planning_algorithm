@@ -6,8 +6,6 @@ import datetime
 
 api = NWE_Molding_Oracle()
 # 宣告工單起始、結束時間、需求導入時間
-week = datetime.datetime.now().isocalendar()[1]
-# week = 44
 dateNow_list = datetime.datetime.now().date().strftime('%Y-%m-%d').split('-')
 dateAfter_list = (datetime.datetime.now()+datetime.timedelta(days=1)).date().strftime('%Y-%m-%d').split('-')
 
@@ -32,7 +30,7 @@ path_basic = './basic_information/'
 #模型初始化
 onworking_mold, onworking_order = api.get_onworking_order(order_start_time) # 在機上工單初始化
 emergency_order = [] # 急件資料初始化
-prep = preprocessor(path_basic, week, week_plan_end_time, order_start_time) # 週計畫初始化
+prep = preprocessor(path_basic, week_plan_end_time, order_start_time) # 週計畫初始化
 weekly_order = prep.get_planning_input() # get週計畫ReadyQueue
 weekly_order.InsertionSort() # 根據priority排序
 
@@ -46,6 +44,6 @@ total_weekly_planning = P.main_function()
 
 print('---------------Process succeed--------------')
 # Show and output result
-# Factory_NWE.show_line_information()
-# Factory_NWE.to_csv('result_' + datetime.datetime.now().date().strftime('%Y-%m-%d'))
-Factory_NWE.output_daily_planning()
+Factory_NWE.show_line_information()
+Factory_NWE.to_csv('result_' + datetime.datetime.now().date().strftime('%Y-%m-%d'))
+# Factory_NWE.output_daily_planning()

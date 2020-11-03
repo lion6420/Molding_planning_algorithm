@@ -53,7 +53,7 @@ class Processor():
 			machine_chosen.order_list.append(newOrder)
 
 			# 修改資料庫週數量
-			api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
+			# api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
 
 		else: # Onworking order
 			machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])

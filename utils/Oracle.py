@@ -1,5 +1,6 @@
 # Oracle Database General CLASS
 import cx_Oracle
+from utils.DS.Frame import Frame
 
 class API_Oracle():
   def __init__(self, host, port, user, password, service_name, cursor=None, conn=None):
@@ -37,15 +38,10 @@ class API_Oracle():
     elif (queryType == 'one'):
       data = self.cursor.fetchone()
     
-    # return dict
-    if (returnType == 'dict'):
-      result = {}
-      for row_index, row in enumerate(data):
-        for ele_index, row_ele in enumerate(row):
-          if (row_index == 0): # 回傳字典新增
-            result.update({cols[ele_index]: []})
-          result[cols[ele_index]].append(row_ele)
-      return result
+    # return frame
+    if (returnType == 'frame'):
+      df = Frame(data, cols)
+      return df
     # return tuple
     elif (returnType == 'tuple'):
       return data
@@ -105,12 +101,10 @@ class API_Oracle():
     data = self.cursor.fetchall()
     self.disconnection()
 
-    # return dict
-    if (returnType == 'dict'):
-      for row in data:
-        for (row_index, row_ele) in enumerate(row):
-          result[cols[row_index]].append(row_ele)
-      return result
+    # return frame
+    if (returnType == 'frame'):
+      df = Frame(data, cols)
+      return df
     # return tuple
     elif (returnType == 'tuple'):
       return data
@@ -162,12 +156,10 @@ class API_Oracle():
     data = self.cursor.fetchone()
     self.disconnection()
 
-    # return dict
-    if (returnType == 'dict'):
-      for row in data:
-        for (row_index, row_ele) in enumerate(row):
-          result[cols[row_index]].append(row_ele)
-      return result
+    # return frame
+    if (returnType == 'frame'):
+      df = Frame(data, cols)
+      return df
     # return tuple
     elif (returnType == 'tuple'):
       return data
