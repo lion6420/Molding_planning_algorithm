@@ -36,11 +36,11 @@ class preprocessor():
 			return 1
 		elif binded_machine:
 			return 2
-		elif moldAmount > 1:
+		elif moldAmount > 0.3:
 			return 3
 		elif moldAmount > 0.5: 
 			return 4
-		elif moldAmount > 0.3:
+		elif moldAmount > 1:
 			return 5
 		else:
 			return 6
@@ -161,7 +161,6 @@ class preprocessor():
 					for mold_index in range(moldAmount):
 						# 模具
 						if historyLog.height > mold_index:
-							print(historyLog[mold_index]['mold_NO'])
 							mold_chosen = Mold(
 								PN,
 								historyLog[mold_index]['MJDW'],

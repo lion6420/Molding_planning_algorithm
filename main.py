@@ -44,6 +44,8 @@ total_weekly_planning = P.main_function()
 
 print('---------------Process succeed--------------')
 # Show and output result
-Factory_NWE.show_line_information()
-Factory_NWE.to_csv('result_' + datetime.datetime.now().date().strftime('%Y-%m-%d'))
-# Factory_NWE.output_daily_planning()
+# Factory_NWE.show_line_information()
+# Factory_NWE.to_csv('result_' + datetime.datetime.now().date().strftime('%Y-%m-%d'))
+# Factory_NWE.performance_calculation(order_start_time, order_end_time)
+# Factory_NWE.waitTime_calculation(order_start_time)
+Factory_NWE.output_daily_planning()

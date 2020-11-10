@@ -287,6 +287,45 @@ class Factory():
         for line in self.line_list:
             line.show_information()
         return
+
+    def performance_calculation(self, plan_s_time, plan_e_time):
+        OEE = []
+        totalTime = (datetime.datetime.timestamp(plan_e_time) - datetime.datetime.timestamp(plan_s_time))/3600 # to hours
+        result_df = pd.read_csv('./performance.csv')
+        for line in self.line_list:
+            for machine in line.machine_list:
+                workTime = 0
+                for order in machine.order_list:
+                    workTime += order.planning_time
+                if workTime > 0:
+                    OEE.append(round(workTime*100/totalTime, 2))
+                else:
+                    OEE.append(0)
+        result_df[plan_s_time.strftime('%Y-%m-%d')] = OEE
+        result_df.to_csv('./performance.csv', encoding='utf_8_sig', index=False) 
+        return OEE
+
+    def waitTime_calculation(self, plan_s_time):
+        avgWaitTime = []
+        result_df = pd.read_csv('./waitTime.csv')
+        for line in self.line_list:
+            for machine in line.machine_list:
+                lastWorkTime = 0
+                waitTime = 0
+                for order in machine.order_list:
+                    if lastWorkTime > 0:
+                        waitTime += (lastWorkTime + 4)
+                    lastWorkTime = order.planning_time
+                if len(machine.order_list) > 0:
+                    avgWaitTime.append(waitTime/len(machine.order_list))
+                else:
+                    avgWaitTime.append(0)
+
+        result_df[plan_s_time.strftime('%Y-%m-%d')] = avgWaitTime
+        result_df.to_csv('./waitTime.csv', encoding='utf_8_sig', index=False)
+        return avgWaitTime
+
+            
     
     def output_daily_planning(self):
         from api.API_MySQL import NWE_Molding_MySQL
@@ -300,9 +339,6 @@ class Factory():
             encoding="UTF-8"
         )
         cursor = conn.cursor()
-
-        # # mysql
-        # api = NWE_Molding_MySQL(config_JTtest['host'], config_JTtest['port'], config_JTtest['user'], config_JTtest['password'], config_JTtest['db']) 
         
         for line in self.line_list:
             for m in line.machine_list:
@@ -333,8 +369,8 @@ class Factory():
                         tons = 1050
                     else:
                         continue
-                    data = (m.name, tons, str(o.end_time), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'n', o.mold.DIE_NO, o.mold.CMDIE_NO, o.mold.STORE_ID, 'n', o.part_name, o.amount, 1, 'n', 'n', 'n', 0, 0, o.plastic_number, 4, o.color, 'n', o.VER)
-                    # oracle
+                    data = (m.name, tons, str(o.mold_down_t), str(o.start_time), str(o.end_time), float(o.planning_time), o.part_number, 0, float(o.UPH), 'n', o.mold.DIE_NO, o.mold.CMDIE_NO, o.mold.STORE_ID, 'n', o.part_name, o.amount, 1, 'n', 'n', 'n', 0, 0, o.plastic_number, 4, o.color, 'n', o.VER)
+
                     sql = '''
                             INSERT INTO "arrangement_result"
                             ("machine_NO", "machine_ton", "mold_down_t", "plan_s_time", "plan_e_time", "plan_work_time",
@@ -348,8 +384,6 @@ class Factory():
                            '''
                     cursor.execute(sql, data)
                     conn.commit()
-                    # # mysql
-                    # api.write_planning_result(data)
         conn.close()
         
         
