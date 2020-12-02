@@ -18,19 +18,15 @@ class Processor():
 		self.emergency = emergency
 		self.total_weekly_planning = total_weekly_planning
 		self.basic_setting = basic_setting
-		self.record_ordered_part_number = []
-		self.buffer_list = []
-		self.urgent = False
-		self.release = False
-		self.buffer = False
-		self.bind_machine = None
-		self.if_stop = False
-		self.mold_change = True
-		self.plastic_change = True
+		self.record_ordered_part_number = {} # 紀錄已排料號&機台
+		self.urgent = False # 是否急單
+		self.bind_machine = None # 綁定機台
+		self.if_stop = False # 強制停止
+		self.mold_change = True # 是否換模
+		self.plastic_change = True # 是否換料
 
 	def planning(self, order):
-		## Get fitted machine
-		if order['機台'] == None or order['結束時間'] == None:
+		if order['onworking_tag'] == False:
 			if order['機台'] != None: # Special PN binded to specific machine
 				machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
 				if machine_chosen == None:
@@ -41,7 +37,7 @@ class Processor():
 				machine_chosen = self.find_fitted_machine(order)
 			if machine_chosen == None: # No machine available for this order
 				return False
-				
+
 			## Time calculation
 			mold_down_t, start_time, end_time, time_needed = self.time_function(order, machine_chosen)
 			if time_needed == None:
@@ -49,24 +45,29 @@ class Processor():
 
 			## Put into order
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['模具'], order['塑膠料號'], order['顏色'], math.ceil(time_needed*order['產能']), \
-											order['產能'], mold_down_t, start_time, end_time, time_needed, order['版次'], urgent_tag=self.urgent)
+											order['產能'], mold_down_t, start_time, end_time, time_needed, order['版次'], urgent_tag=self.urgent, onworking_tag=order['onworking_tag'])
 			machine_chosen.order_list.append(newOrder)
 
 			# 修改資料庫週數量
-			api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
+			# api_oracle.update_weeklyAmount(math.ceil(time_needed*order['產能']), order['帶版料號'])
 
 		else: # Onworking order
 			machine_chosen = Factory_NWE.get_machine_by_name(order['機台'])
 			end_time = order['結束時間']
 			newOrder = Order(order['鴻海料號'], order['品名'], order['噸位'], order['模具'], order['塑膠料號'], order['顏色'], order['總需求'], \
-										   order['產能'], order['換模時間'], order['起始時間'], order['結束時間'], order['生產時間'], order['版次'], urgent_tag=self.urgent)
+										   order['產能'], order['換模時間'], order['起始時間'], order['結束時間'], order['生產時間'], order['版次'], \
+											 urgent_tag=self.urgent, onworking_tag=order['onworking_tag'])
 			machine_chosen.order_list.append(newOrder)
 
 		#機台剩餘時間扣減	
-		remainig_time = self.machine_remaining_time_calculation(machine_chosen, end_time)
-		machine_chosen.remaining_time = remainig_time
+		remaining_time = self.machine_remaining_time_calculation(machine_chosen, end_time)
+		machine_chosen.remaining_time = remaining_time
 		
-		self.record_ordered_part_number.append(newOrder.part_number)
+		# 紀錄已排程料號&機台
+		if (newOrder.part_number in self.record_ordered_part_number):
+			self.record_ordered_part_number[newOrder.part_number].append(machine_chosen.name)
+		else:
+			self.record_ordered_part_number[newOrder.part_number] = [machine_chosen.name]
 
 		# Reset default status
 		self.bind_machine = None
@@ -77,7 +78,14 @@ class Processor():
 
 	def find_fitted_machine(self, order):
 		tons = order['噸位']
+		if (tons and tons[-1] != 'T'):
+			tons = tons + 'T'
 		color = order['顏色']
+		PN = order['鴻海料號']
+		if (PN in self.record_ordered_part_number):
+			alreadyOrderedMachine = self.record_ordered_part_number[PN]
+		else:
+			alreadyOrderedMachine = []
 
 		# Find fittable machine
 		machine_chosen_list = []
@@ -101,8 +109,17 @@ class Processor():
 			return None
 
 		else: #-3-(2) Type3: plural machine is usable, find the best one (the longest remaining time); or the best machine had been found
-			keep_max = machine_chosen_list[0]
+			# Examin the already ordered machine
+			machine_remaind_list = []
 			for m in machine_chosen_list:
+				if (m.name not in alreadyOrderedMachine):
+					machine_remaind_list.append(m)
+			if len(machine_remaind_list) == 0:
+				return None
+			else:
+				keep_max = machine_remaind_list[0]
+
+			for m in machine_remaind_list: # Find the most remaining time machine
 				if m.remaining_time > keep_max.remaining_time:
 					keep_max = m
 			machine_chosen = keep_max

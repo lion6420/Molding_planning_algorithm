@@ -12,6 +12,28 @@ class NWE_Molding_Oracle(API_Oracle):
     password=config_oracle['password'],
     service_name=config_oracle['service_name']):
     super().__init__(host=host, port=port, user=user, password=password, service_name=service_name)
+  ## Basic information
+  def getPartName(self, PN):
+    filterArgs = {
+      'ITEM_NUMBER__eq' : PN
+    }
+    col = ['CHNNAME']
+    result = self.queryFilterOne('MATERIAL', filterArgs=filterArgs, cols=col)
+    if result:
+      return result[0]
+    else:
+      return ''
+
+  def getPartCT(self, PN):
+    filterArgs = {
+      'Part_NO__eq': PN
+    }
+    col = ['"machine_CT"']
+    result = self.queryFilterOne('Part_NO_CT', filterArgs=filterArgs, cols=col)
+    if result:
+      return result[0]
+    else:
+      return 0
 
   def get_plasticNO(self, PN):
     filterArgs = {
@@ -33,6 +55,28 @@ class NWE_Molding_Oracle(API_Oracle):
       return None
     return plasticNO[0]
 
+  def getMold(self, PN):
+    filterArgs = {
+      'PN': PN
+    }
+    sql = '''
+      SELECT MJ_DATA.HH_NO1,
+             MJ_DATA.CMDIE_NO,
+             MJ_DATA.DIE_NO,
+             MJ_DATA.HOLENUM,
+             MJ_DATA.STORE_ID,
+             MJ_DATA.STATUS,
+             MJ_TMP.MJDW
+      FROM MJ_DATA
+      LEFT JOIN MJ_TMP
+      ON MJ_DATA.CMDIE_NO = MJ_TMP.CMDIE_NO AND MJ_DATA.DIE_NO = MJ_TMP.DIE_NO
+      WHERE HH_NO1 = :PN
+    '''
+    cols = ['HH_NO1','CMDIE_NO', 'DIE_NO', 'HOLENUM', 'STORE_ID', 'STATUS', 'MJDW']
+    result = self.customQuery(sql, filterArgs=filterArgs, cols=cols, returnType='frame')
+    return result
+
+  ##
   def get_onworking_order(self, order_start_time):
     filterArgs = {
       'time': order_start_time
@@ -45,7 +89,7 @@ class NWE_Molding_Oracle(API_Oracle):
       SELECT "arrangement_result".*, MJ_DATA.HOLENUM
       FROM "arrangement_result"
       LEFT JOIN MJ_DATA
-      ON "mold_NO" = CMDIE_NO AND "mold_Serial" = DIE_NO
+      ON "mold_NO" = CMDIE_NO AND "mold_Serial" = DIE_NO AND "Part_NO" = HH_NO1
       WHERE "plan_e_time" > :time
     '''
     onworking_order = self.customQuery(sql, filterArgs=filterArgs, cols=cols, returnType='frame')
@@ -81,6 +125,7 @@ class NWE_Molding_Oracle(API_Oracle):
         '換模時間': onworking_order[index]['"mold_down_t"'],
         '起始時間': onworking_order[index]['"plan_s_time"'],
         '結束時間': onworking_order[index]['"plan_e_time"'],
+        'onworking_tag': True,
         'priority': 0,
       }
     return onWorkMold, result
@@ -173,7 +218,6 @@ class NWE_Molding_Oracle(API_Oracle):
             "mold_Serial", "mold_position", "mold_hole", "update_time",
             FINALTABLE.STATUS, FINALTABLE.MJDW, count(*)
       FROM FINALTABLE
-      WHERE STATUS = '正常入庫'
       GROUP BY "machine_NO", UPH, "plastic_Part_NO", "mold_NO",
               "mold_Serial", "mold_position", "mold_hole", "update_time",
               FINALTABLE.STATUS, FINALTABLE.MJDW

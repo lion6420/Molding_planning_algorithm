@@ -24,15 +24,13 @@ order_end_time = order_start_time + datetime.timedelta(days=1)
 # 需求導入時間
 week_plan_end_time = datetime.datetime.strptime((week_plan_end_day[0] + '-' + week_plan_end_day[1] + '-' + week_plan_end_day[2] + ' 00:00:00'), '%Y-%m-%d %H:%M:%S')
 
-# 宣告路徑
-path_basic = './basic_information/'
-
 #模型初始化
 onworking_mold, onworking_order = api.get_onworking_order(order_start_time) # 在機上工單初始化
 emergency_order = [] # 急件資料初始化
-prep = preprocessor(path_basic, week_plan_end_time, order_start_time) # 週計畫初始化
+prep = preprocessor(week_plan_end_time, order_start_time) # 週計畫初始化
 weekly_order = prep.get_planning_input() # get週計畫ReadyQueue
 weekly_order.InsertionSort() # 根據priority排序
+print(weekly_order.orderList.length)
 
 #start planning
 time_setting = {
@@ -44,8 +42,8 @@ total_weekly_planning = P.main_function()
 
 print('---------------Process succeed--------------')
 # Show and output result
-# Factory_NWE.show_line_information()
-# Factory_NWE.to_csv('result_' + datetime.datetime.now().date().strftime('%Y-%m-%d'))
-# Factory_NWE.performance_calculation(order_start_time, order_end_time)
-# Factory_NWE.waitTime_calculation(order_start_time)
-Factory_NWE.output_daily_planning()
+Factory_NWE.show_line_information()
+Factory_NWE.to_csv('result_' + datetime.datetime.now().date().strftime('%Y-%m-%d'))
+Factory_NWE.performance_calculation(order_start_time, order_end_time)
+Factory_NWE.waitTime_calculation(order_start_time)
+# Factory_NWE.output_daily_planning()

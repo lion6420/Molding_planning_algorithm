@@ -14,7 +14,7 @@ def myconverter(r):
 # 工單
 class Order():
     def __init__(self, part_number, part_name, tons, mold, plastic_number, color, amount, UPH, mold_down_t,start_time, end_time, planning_time, \
-                 VER, urgent_tag=False):
+                 VER, urgent_tag=False, onworking_tag=False):
         self.part_number = part_number
         self.part_name = part_name
         self.tons = tons
@@ -28,8 +28,9 @@ class Order():
         self.start_time = start_time
         self.end_time = end_time
         self.planning_time = planning_time
-        self.urgent_tag = urgent_tag
         self.VER = VER
+        self.urgent_tag = urgent_tag
+        self.onworking_tag = onworking_tag
 
 
 # 模具
@@ -343,6 +344,8 @@ class Factory():
         for line in self.line_list:
             for m in line.machine_list:
                 for o in m.order_list:
+                    if (o.onworking_tag):
+                        continue
                     if o.tons == '100T':
                         tons = 100
                     elif o.tons == '50T':
@@ -405,6 +408,8 @@ class Factory():
         for line in self.line_list:
             for m in line.machine_list:
                 for o in m.order_list:
+                    if (o.onworking_tag):
+                        continue
                     tons_list.append(m.tons)
                     machine_name_list.append(m.name)
                     mold_down_t_list.append(o.mold_down_t)

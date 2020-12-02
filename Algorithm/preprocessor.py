@@ -10,13 +10,16 @@ import datetime
 
 
 class preprocessor():
-	def __init__(self, path_basic, week_plan_end_time, order_start_time):
+	def __init__(self, week_plan_end_time, order_start_time):
 		self.api_oracle = NWE_Molding_Oracle()
-		self.basic_df = pd.read_excel(path_basic + 'molding_basic_information.xlsx')
 		self.PN_list, self.weeklyDemand = self.api_oracle.get_weeklyAmount()
 		self.order_start_time = order_start_time
 		self.week_plan_end_time = week_plan_end_time
 		self.onworking_mold, self.onworking_order = self.api_oracle.get_onworking_order(order_start_time)
+		# history
+		self.historyLog = None
+		self.history_mold = [] # 避免歷史紀錄的模具被其他機台拿走
+		# output
 		self.planningReadyQueue = ReadyQueue()
 	
 
@@ -31,27 +34,34 @@ class preprocessor():
 		machine_binded = self.api_oracle.check_machineBinded(PN)
 		return machine_binded
 
-	def cal_priority(self, moldAmount, urgent_tag, binded_machine):
+	def cal_priority(self, moldAmount, urgent_tag, binded_machine, history_binded):
 		if urgent_tag == True:
 			return 1
 		elif binded_machine:
 			return 2
-		elif moldAmount > 0.3:
+		elif history_binded:
 			return 3
-		elif moldAmount > 0.5: 
+		elif moldAmount > 0.3:
 			return 4
-		elif moldAmount > 1:
+		elif moldAmount > 0.5: 
 			return 5
-		else:
+		elif moldAmount > 1:
 			return 6
+		else:
+			return 7
 
 	def getEditNumber(self, PN):
 		editNumber = PN.split('W')[-1]
 		return editNumber
 
+	def getHistory(self, PN):
+		self.historyLog = self.api_oracle.getHistory(PN) # 歷史生產紀錄(return frame)
+		self.history_mold = []
+		for log_index in range(self.historyLog.height):
+			self.history_mold.append(self.historyLog[log_index]['mold_NO'])
+		
 	def get_mold(self, PN):# 模具資料
-		cols = ['HH_NO1', 'MJDW', 'CMDIE_NO', 'DIE_NO', 'HOLENUM', 'STORE_ID', 'STATUS']
-		data = self.api_oracle.queryFilterAll('MJ_DATA', {'HH_NO1__eq':PN, 'STATUS__eq':'正常入庫'}, cols=cols, returnType='frame')
+		data = self.api_oracle.getMold(PN)
 		if data.height > 0:
 			best_mold_index = None
 			for index in range(data.height):
@@ -79,6 +89,31 @@ class preprocessor():
 		else: # 資料庫找不到模具
 			return None
 
+	def cal_UPH(self, PN):
+		CT = self.api_oracle.getPartCT(PN)
+		if (CT>0):
+			UPH = 3600/CT
+			return UPH
+		else:
+			return 0
+
+	def getBasicInfomation(self, PN, PN_withEdit):
+		name = self.api_oracle.getPartName(PN)
+		UPH = self.cal_UPH(PN_withEdit)
+		if self.historyLog.height>0:
+			plastic_number = self.historyLog[0]['plastic_Part_NO'] # 找對應塑膠粒
+		else:
+			plastic_number = self.api_oracle.get_plasticNO(PN) # 找對應塑膠粒
+
+		if plastic_number:
+			color = self.get_color(plastic_number) # 查顏色
+		else:
+			color = 'others'
+		if name == '導光柱' or name == '道光柱':
+			color = '透明'
+
+		return name, UPH, plastic_number, color
+
 	def get_planning_input(self):
 		# 已經在機台上料號
 		for onworking_order_index, eachOnworkOrder in enumerate(self.onworking_order):
@@ -102,10 +137,10 @@ class preprocessor():
 				eachOnworkOrder['換模時間'] = None
 				eachOnworkOrder['開始時間'] = None
 				eachOnworkOrder['結束時間'] = None
+				eachOnworkOrder['onworking_tag'] = False
 				self.planningReadyQueue.enqueue(eachOnworkOrder)
 			else:
 				continue
-
 
 		for PN_index, PN in enumerate(tqdm(self.PN_list, ascii=True)):
 			# 檢查是否排過
@@ -122,27 +157,10 @@ class preprocessor():
 				amount = self.weeklyDemand[PN]['plan_number'] - 0 - stock_amount
 
 			if amount>0:
-				historyLog = self.api_oracle.getHistory(PN) # 歷史生產紀錄
-				if historyLog.height>0:
-					plastic_number = historyLog[0]['plastic_Part_NO'] # 找對應塑膠粒
-				else:
-					plastic_number = self.api_oracle.get_plasticNO(PN) # 找對應塑膠粒
+				self.getHistory(PN) # 獲取歷史紀錄
+				name, UPH, plastic_number, color = self.getBasicInfomation(PN, PN_withEdit) # 獲取基本資料
 
-				basic_information = self.basic_df[self.basic_df['鴻海料號'] == PN] # 找基本資料(噸位、UPH、品名)
-				if len(basic_information)>0:
-					tons = basic_information['需求機台'].tolist()[0]
-					UPH = round(basic_information['產能(PCS/H)'].tolist()[0], 2)
-					name = basic_information['品名'].tolist()[0]
-				else:
-					continue
 				if UPH > 0:
-					if plastic_number:
-						color = self.get_color(plastic_number) # 查顏色
-					else:
-						color = 'others'
-					if name == '導光柱' or name == '道光柱':
-						color = '透明'
-
 					## 計算模具數量
 					dayRemained = (self.week_plan_end_time - self.order_start_time).days # 計算需要的模具數量(一週七天)
 					if dayRemained<1:
@@ -160,31 +178,43 @@ class preprocessor():
 					input_machine = None
 					for mold_index in range(moldAmount):
 						# 模具
-						if historyLog.height > mold_index:
-							mold_chosen = Mold(
-								PN,
-								historyLog[mold_index]['MJDW'],
-								historyLog[mold_index]['mold_NO'],
-								historyLog[mold_index]['mold_Serial'],
-								historyLog[mold_index]['mold_hole'],
-								historyLog[mold_index]['mold_position'],
-								historyLog[mold_index]['STATUS']
-							)
+						if self.historyLog.height > mold_index:
+							if (self.historyLog[mold_index]['STATUS'] == '正常入庫' and self.historyLog[mold_index]['mold_NO'] not in self.onworking_mold):
+								mold_chosen = Mold(
+									PN,
+									self.historyLog[mold_index]['MJDW'],
+									self.historyLog[mold_index]['mold_NO'],
+									self.historyLog[mold_index]['mold_Serial'],
+									self.historyLog[mold_index]['mold_hole'],
+									self.historyLog[mold_index]['mold_position'],
+									self.historyLog[mold_index]['STATUS']
+								)
+							else:
+								mold_chosen = self.get_mold(PN)
 						else:
 							mold_chosen = self.get_mold(PN) # 模具
 						if mold_chosen == None: # 如果沒模具可以用
 							break
+						
+						# 模具噸位
+						tons = mold_chosen.MJDW
 
 						# 機台綁定
-						if historyLog.height > mold_index:
-							input_machine = historyLog[mold_index]['machine_NO']
-						elif len(machine_binded_list)>0:
+						force_binded = False
+						history_binded = False
+						if len(machine_binded_list)>0: # forced bind
 							input_machine = machine_binded_list[mold_index]
-
-						priority = self.cal_priority(moldAmount, False, input_machine) # calc Priority
+							force_binded = True
+						elif self.historyLog.height > mold_index: # history bind
+							input_machine = self.historyLog[mold_index]['machine_NO']
+							history_binded = True
+						
+						priority = self.cal_priority(moldAmount, False, force_binded, history_binded) # calc Priority
 						
 						# update onworking mold
 						self.onworking_mold.update({mold_chosen.CMDIE_NO: True})
+
+						self.weeklyDemand[PN]['planned'] = True
 						# put into queue
 						self.planningReadyQueue.enqueue({
 							'鴻海料號': PN,
@@ -202,6 +232,7 @@ class preprocessor():
 							'換模時間': None,
 							'起始時間': None,
 							'結束時間': None,
+							'onworking_tag': False,
 							'priority': priority
 						})
 				else:
